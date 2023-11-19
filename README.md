@@ -1,4 +1,4 @@
-# MMM-Reddit #
+# MMM-RedditDisplay #
 
 This module is used to show top level reddit info for Magic Mirror<sup>2</sup>.
 
@@ -16,17 +16,17 @@ Just an installation of [Magic Mirror<sup>2</sup>](https://github.com/MichMich/M
 
 ## Installation ##
 
-1. Run `git clone https://github.com/kjb085/MMM-Reddit.git` in the directory `~/MagicMirror/modules`
-2. Add MMM-Reddit to your config file `~/MagicMirror/config/config.js`
+1. Run `https://github.com/CurlyQ12391/MMM-RedditDisplay` in the `~/MagicMirror/modules` directory
+2. Add MMM-RedditDisplay to your config file `~/MagicMirror/config/config.js`
 
 ```
 {
-	module: "MMM-Reddit",
+	module: "MMM-RedditDisplay",
 	position: "top_right",
 	config: {
     	...
 	}
-}
+},
 ```
 
 ## Examples ##
@@ -37,7 +37,7 @@ Just an installation of [Magic Mirror<sup>2</sup>](https://github.com/MichMich/M
 
 ```
 config: {
-	subreddit: 'earthporn',
+	subreddit: 'recipes',
 	displayType: 'image',
 	imageQuality: 'high',
 	count: 10,
