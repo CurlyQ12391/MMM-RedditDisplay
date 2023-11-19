@@ -3,16 +3,16 @@
   "version": "1.0.0",
   "description": "Magic Mirror Module to display content from Reddit",
   "main": "MMM-RedditDisplay.js",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/CurlyQ12391/MMM-RedditDisplay.git"
-  },
-  "keywords": [
+  "author": "CurlyQ12391",
+  "license": "MIT",
+  "dependencies": {
+    "request": "^2.88.2"
+    // Add other dependencies if needed
+  }
+    "keywords": [
     "MM",
     "MagicMirror",
     "reddit",
     "display"
   ],
-  "author": "CurlyQ12391",
-  "license": "MIT"
 }
