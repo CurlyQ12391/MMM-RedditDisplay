@@ -7,37 +7,46 @@
 const MILLISECONDS_IN_MINUTE = 60 * 1000;
 
 Module.register('MMM-RedditDisplay', {
+    /**
+     * List of default configurations
+     * @type {Object}
+     */
     defaults: {
         subreddit: 'all',
         type: 'hot',
-        postIdList: [],
-        displayType: 'headlines',
+        postIdList: [], // TODO: Implement this
+        displayType: 'headlines', // Options: 'headlines', 'image' (for image, if post is album, only 1st image is shown)
         count: 10,
         show: 5,
-        width: 400,
-        updateInterval: 15,
-        rotateInterval: 30,
+        width: 400, // In pixels
+        updateInterval: 15, // In minutes
+        rotateInterval: 30, // In seconds
         forceImmediateUpdate: true,
         characterLimit: null,
         titleReplacements: [],
 
+        // Toggles
         showHeader: true,
-        headerType: 'sentence',
-        showAll: false,
+        headerType: 'sentence', // Options: 'sentence', 'chained'
+        showAll: false, // Alias for all below 'show' toggles (this excludes the showHeader feature)
         showRank: true,
         showScore: true,
         showNumComments: true,
         showGilded: true,
         showAuthor: false,
-        showSubreddit: false,
+        showSubreddit: false, // For combo subreddits
         colorText: true,
 
-        showThumbnail: false,
-        maxImageHeight: 500,
-        imageQuality: 'mid-high',
-        showTitle: true,
+        // Headlines only
+        showThumbnail: false, // Irrelevant for image posts
 
-        debug: false,
+        // Image only
+        maxImageHeight: 500, // In pixels
+        imageQuality: 'mid-high', // Options: 'low', 'mid', 'mid-high', 'high'
+        showTitle: true, // Non-configurable for text base subs
+
+        // Developer only
+        debug: true,
     },
 
     posts: [],
@@ -102,8 +111,9 @@ Module.register('MMM-RedditDisplay', {
     initializeUpdate() {
         this.sendSocketNotification('REDDIT_CONFIG', { config: this.nodeHelperConfig });
     },
-
     socketNotificationReceived(notification, payload) {
+    console.log(`Received notification: ${notification}`, payload);
+
         if (notification === 'REDDIT_POSTS') {
             this.handleReturnedPosts(payload);
         } else if (notification === 'REDDIT_POSTS_ERROR') {
@@ -196,12 +206,17 @@ Module.register('MMM-RedditDisplay', {
 
     deleteWrapperElement(wrapperExists) {
         this.log(['deleting wrapper']);
-        if (wrapperExists) {
-            document.getElementById(this.domElements.wrapperId).remove();
+        let wrapperElement = document.getElementById(this.domElements.wrapperId);
+        if (wrapperExists && wrapperElement) {
+            wrapperElement.remove();
         }
     },
 
     getDom() {
+        console.log('getDom called');
+        console.log('Posts:', this.posts);
+        console.log('Post Sets:', this.postSets);
+
         let wrapper = document.createElement('div');
         wrapper.id = this.domElements.wrapperId;
         this.setWrapperStyles(wrapper);
@@ -234,10 +249,11 @@ Module.register('MMM-RedditDisplay', {
         wrapper.style.width = this.config.width + 'px';
     },
 
-    createPostElement(post, postIndex, setIndex) {
-        let postElement = document.createElement('div');
-        postElement.className = 'reddit-post';
+createPostElement(post, postIndex, setIndex) {
+    let postElement = document.createElement('div');
+    postElement.className = 'reddit-post';
 
+    if (post && typeof post === 'object') { // Add this check
         if (this.config.showHeader) {
             postElement.appendChild(this.getHeaderElement(post));
         }
@@ -247,11 +263,18 @@ Module.register('MMM-RedditDisplay', {
         }
 
         postElement.appendChild(this.getPostBodyElement(post, postIndex, setIndex));
+    }
 
-        return postElement;
-    },
+    return postElement;
+},
 
+    
     getHeaderElement(post) {
+        if (!post) {
+            console.warn('getHeaderElement called with undefined post.');
+            return document.createElement('div'); // Return an empty element if post is undefined
+        }
+    
         let headerElement = document.createElement('div');
         headerElement.className = 'reddit-header';
 
@@ -309,10 +332,11 @@ Module.register('MMM-RedditDisplay', {
         return thumbnailElement;
     },
 
-    getPostBodyElement(post, postIndex, setIndex) {
-        let postBodyElement = document.createElement('div');
-        postBodyElement.className = 'reddit-body';
+getPostBodyElement(post, postIndex, setIndex) {
+    let postBodyElement = document.createElement('div');
+    postBodyElement.className = 'reddit-body';
 
+    if (post && typeof post === 'object') { // Add this check
         if (this.config.showRank) {
             let rankElement = document.createElement('div');
             rankElement.className = 'reddit-rank-body';
@@ -361,9 +385,10 @@ Module.register('MMM-RedditDisplay', {
             titleElement.innerHTML = this.getFormattedTitle(post.title);
             postBodyElement.appendChild(titleElement);
         }
+    }
 
-        return postBodyElement;
-    },
+    return postBodyElement;
+},
 
     getFormattedTitle(title) {
         // Apply title replacements if configured
