@@ -4,7 +4,7 @@
  * By CurlyQ12391 https://github.com/CurlyQ12391/MMM-RedditDisplay
  * Forked from kjb085 https://github.com/kjb085/MMM-Reddit
  */
-const axios = require('axios');
+const fetch = require('node-fetch');
 const NodeHelper = require('node_helper');
 
 module.exports = NodeHelper.create({
@@ -30,41 +30,42 @@ module.exports = NodeHelper.create({
         let url = this.getUrl(this.config),
             posts = [];
 
-        axios.get(url)
+        fetch(url)
             .then(response => {
                 if (response.status === 200) {
-                    let body = response.data;
-                if (typeof body.data !== "undefined") {
-                    if (typeof body.data.children !== "undefined") {
-                        body.data.children.forEach((post) => {
-                            let temp = {};
-
-                            temp.title = this.formatTitle(post.data.title);
-                            temp.score = post.data.score;
-                            temp.thumbnail = post.data.thumbnail;
-                            temp.src = this.getImageUrl(post.data.preview, post.data.thumbnail),
-                                temp.gilded = post.data.gilded;
-                            temp.num_comments = post.data.num_comments;
-                            temp.subreddit = post.data.subreddit;
-                            temp.author = post.data.author;
-
-                            if (this.config.displayType !== 'image' || temp.src !== null) {
-                                posts.push(temp);
-                            }
-                        });
-
-                        this.sendData({ posts: posts });
-                    } else {
-                        this.sendError('No posts returned. Ensure the subreddit name is spelled correctly. ' +
-                            'Private subreddits are also inaccessible');
-                    }
+                    return response.json();
                 } else {
-                    this.sendError(['Invalid response body', body]);
+                    throw new Error('Request status code: ' + response.status);
                 }
-            } else {
-                this.sendError('Request status code: ' + response.statusCode);
-            }
-        });
+            })
+            .then(body => {
+                if (body.data && body.data.children) {
+                    body.data.children.forEach(post => {
+                        let temp = {
+                            title: this.formatTitle(post.data.title),
+                            score: post.data.score,
+                            thumbnail: post.data.thumbnail,
+                            src: this.getImageUrl(post.data.preview, post.data.thumbnail),
+                            gilded: post.data.gilded,
+                            num_comments: post.data.num_comments,
+                            subreddit: post.data.subreddit,
+                            author: post.data.author,
+                        };
+
+                        if (this.config.displayType !== 'image' || temp.src !== null) {
+                            posts.push(temp);
+                        }
+                    });
+
+                    this.sendData({ posts: posts });
+                } else {
+                    throw new Error('Invalid response body');
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                this.sendError(error.message);
+            });
     },
 
     getUrl(config) {
@@ -93,8 +94,8 @@ module.exports = NodeHelper.create({
             limit = this.config.characterLimit,
             originalLength = title.length;
 
-        replacements.forEach((modifier) => {
-            let caseSensitive = typeof modifier.caseSensitive !== 'undefined' ? modifier.caseSensitive : true,
+        replacements.forEach(modifier => {
+            let caseSensitive = modifier.caseSensitive !== undefined ? modifier.caseSensitive : true,
                 caseFlag = caseSensitive ? '' : 'i',
                 search = new RegExp(modifier.toReplace, 'g' + caseFlag),
                 replacement = modifier.replacement;
@@ -134,7 +135,7 @@ module.exports = NodeHelper.create({
     },
 
     skipNonImagePost(preview, thumbnail) {
-        let previewUndefined = typeof preview === "undefined",
+        let previewUndefined = typeof preview === 'undefined',
             nonImageThumbnail = thumbnail.indexOf('http') === -1,
             hasImages, firstImageHasSource;
 
@@ -169,6 +170,7 @@ module.exports = NodeHelper.create({
     },
 
     sendError(error) {
-        console.log(error);
+        console.error(error);
+        this.sendSocketNotification('REDDIT_POSTS_ERROR', { message: error });
     },
 });
