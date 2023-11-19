@@ -16,8 +16,12 @@ Just an installation of [Magic Mirror<sup>2</sup>](https://github.com/MichMich/M
 
 ## Installation ##
 
-1. Run `https://github.com/CurlyQ12391/MMM-RedditDisplay` in the `~/MagicMirror/modules` directory
-2. Add MMM-RedditDisplay to your config file `~/MagicMirror/config/config.js`
+1. Clone the Repository:
+``` git clone https://github.com/CurlyQ12391/MMM-RedditDisplay.git ```
+2. Navigate to the Cloned Directory:
+``` cd MMM-RedditDisplay ```
+3. Install Dependencies:
+``` npm install ```
 
 ```
 {
