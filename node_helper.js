@@ -4,7 +4,7 @@
  * By CurlyQ12391 https://github.com/CurlyQ12391/MMM-RedditDisplay
  * Forked from kjb085 https://github.com/kjb085/MMM-Reddit
  */
-const request = require('request');
+const axios = require('axios');
 const NodeHelper = require('node_helper');
 
 module.exports = NodeHelper.create({
@@ -28,12 +28,12 @@ module.exports = NodeHelper.create({
 
     getData() {
         let url = this.getUrl(this.config),
-            posts = [],
-            body;
+            posts = [];
 
-        request({ url: url }, (error, response, body) => {
-            if (response.statusCode === 200) {
-                body = JSON.parse(body);
+        axios.get(url)
+            .then(response => {
+                if (response.status === 200) {
+                    let body = response.data;
                 if (typeof body.data !== "undefined") {
                     if (typeof body.data.children !== "undefined") {
                         body.data.children.forEach((post) => {
