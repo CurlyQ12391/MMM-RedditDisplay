@@ -58,7 +58,7 @@ Module.register('MMM-RedditDisplay', {
 
     getStyles() {
         return [
-            this.file('assets/MMM-RedditDisplay.css'),
+            this.file('MMM-RedditDisplay.css'),
         ];
     },
 
@@ -144,9 +144,12 @@ Module.register('MMM-RedditDisplay', {
         return sets;
     },
 
-    getHeader() {
-        if (this.config.showHeader) {
-            return this.getHeaderText();
+    getHeaderText: function () {
+        if (this.posts && this.posts.length > 0) {
+            // Assuming the title is part of the post data
+            return this.posts[0].title;
+        } else {
+            return 'Default Header Text';  // Provide a default text in case there are no posts
         }
     },
 
