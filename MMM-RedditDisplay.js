@@ -4,8 +4,6 @@
  * By CurlyQ12391 https://github.com/CurlyQ12391/MMM-RedditDisplay
  * Forked from kjb085 https://github.com/kjb085/MMM-Reddit
  */
-const MILLISECONDS_IN_MINUTE = 60 * 1000;
-
 const axios = require("axios");
 const RedditImageEntry = require("./classes/RedditImageEntry");
 
@@ -14,17 +12,10 @@ class RedditApiImageGetter {
     this.config = config;
   }
 
-  // Quick function that gets the current hot entries
+  // Quick function that gets the current entries based on the specified type
   // Returns a Promise
-  getHotImagesOfSubReddit(subreddit = "ProgrammerHumor") {
-    const redditUrl = `https://www.reddit.com/r/${subreddit}/hot.json`;
-    return this.getJsonFromReddit(subreddit, redditUrl);
-  }
-
-  // Quick function that gets the current top entries
-  // Returns a Promise
-  getTopImagesOfSubReddit(subreddit = "ProgrammerHumor") {
-    const redditUrl = `https://www.reddit.com/r/${subreddit}/top.json`;
+  getImagesOfSubReddit(subreddit, type) {
+    const redditUrl = `https://www.reddit.com/r/${subreddit}/${type}.json`;
     return this.getJsonFromReddit(subreddit, redditUrl);
   }
 
@@ -34,27 +25,27 @@ class RedditApiImageGetter {
   //
   // Returns a Promise
   getJsonFromReddit(subreddit, redditUrl) {
-    return new Promise(function (resolve, reject) {
+    return new Promise((resolve, reject) => {
       axios
         .get(redditUrl)
-        .then(function (response) {
+        .then((response) => {
           const dataChildren = response.data.data.children;
           const redditImagePosts = dataChildren.map(
             (child) => new RedditImageEntry(child.data, subreddit)
           );
           resolve(redditImagePosts);
         })
-        .catch(function (error) {
-          console.log(error);
+        .catch((error) => {
+          console.error(error);
           reject(error);
-        })
-        .finally(function () {
-          // Do stuff?
-          // Maybe allow devs to add another function to call?
         });
     });
   }
 }
+
+// Export the class for use in other files
+module.exports = RedditApiImageGetter;
+
 
 Module.register('MMM-RedditDisplay', {
   /**
@@ -121,6 +112,11 @@ Module.register('MMM-RedditDisplay', {
 
 start() {
     console.log(`Starting module: ${this.name}`);
+    this.configureRedditApi();
+    this.initializeModule();
+  },
+
+  configureRedditApi() {
     this.nodeHelperConfig = {
       subreddit: this.config.subreddit,
       type: this.config.type,
@@ -140,54 +136,55 @@ start() {
     if (this.config.showAll) {
       this.setConfigShowAll();
     }
+  },
 
+  initializeModule() {
     this.initializeUpdate();
     this.setUpdateInterval();
   },
 
-    setUpdateInterval() {
-        this.updater = setInterval(() => {
-            this.initializeUpdate();
-        }, this.config.updateInterval * MILLISECONDS_IN_MINUTE);
-    },
+  setUpdateInterval() {
+    this.updater = setInterval(() => {
+      this.initializeUpdate();
+    }, this.config.updateInterval * MILLISECONDS_IN_MINUTE);
+  },
 
-    setConfigShowAll() {
-        this.config.showRank = true;
-        this.config.showScore = true;
-        this.config.showThumbnail = true;
-        this.config.showTitle = true;
-        this.config.showNumComments = true;
-        this.config.showGilded = true;
-        this.config.showAuthor = true;
-        this.config.showSubreddit = true;
-    },
+  setConfigShowAll() {
+    this.config.showRank = true;
+    this.config.showScore = true;
+    this.config.showThumbnail = true;
+    this.config.showTitle = true;
+    this.config.showNumComments = true;
+    this.config.showGilded = true;
+    this.config.showAuthor = true;
+    this.config.showSubreddit = true;
+  },
 
-      initializeUpdate() {
-        // Fetch posts from the Reddit API based on module configuration
-        this.redditApi.getImagesOfSubReddit(this.config.subreddit, this.config.type)
-          .then(posts => {
-            this.sendSocketNotification('REDDIT_POSTS', { posts });
-          })
-          .catch(error => {
-            this.sendSocketNotification('REDDIT_POSTS_ERROR', { message: error.message });
-          });
-      },
+  initializeUpdate() {
+    this.redditApi.getImagesOfSubReddit(this.config.subreddit, this.config.type)
+      .then(posts => {
+        this.sendSocketNotification('REDDIT_POSTS', { posts });
+      })
+      .catch(error => {
+        this.sendSocketNotification('REDDIT_POSTS_ERROR', { message: error.message });
+      });
+  },
     
-    socketNotificationReceived(notification, payload) {
-        console.log(`Received notification: ${notification}`, payload);
+socketNotificationReceived(notification, payload) {
+    console.log(`Received notification: ${notification}`, payload);
 
-        if (notification === 'REDDIT_POSTS') {
-        console.log('Received Reddit Posts:', payload);
-            this.handleReturnedPosts(payload);
-        } else if (notification === 'REDDIT_POSTS_ERROR') {
-            this.handlePostsError(payload);
-        }
+    if (notification === 'REDDIT_POSTS') {
+      console.log('Received Reddit Posts:', payload);
+      this.handleReturnedPosts(payload);
+    } else if (notification === 'REDDIT_POSTS_ERROR') {
+      this.handlePostsError(payload);
+    }
 
-        this.log(['is rotating', this.rotator !== null]);
-        this.log(['updating immediately', !this.rotator || this.config.forceImmediateUpdate]);
+    this.log(['is rotating', this.rotator !== null]);
+    this.log(['updating immediately', !this.rotator || this.config.forceImmediateUpdate]);
 
-        this.initializeRefreshDom(!this.rotator || this.config.forceImmediateUpdate);
-    },
+    this.initializeRefreshDom(!this.rotator || this.config.forceImmediateUpdate);
+  },
 
     handleReturnedPosts(payload) {
         let hasValidPosts = !!payload.posts.length;
