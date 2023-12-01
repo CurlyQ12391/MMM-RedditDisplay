@@ -6,6 +6,7 @@ Module.register('MMM-RedditDisplay', {
     defaults: {
     	subreddit: 'all',
         type: 'hot',
+        apiUrl: 'https://www.reddit.com/r/', // Add this line with the base URL
         postIdList: [], // TODO: Implement this
         displayType: 'headlines', // Options: 'headlines', 'image' (for image, if post is album, only 1st image is shown)
         count: 10,
@@ -138,6 +139,7 @@ Module.register('MMM-RedditDisplay', {
      */
     start () {
         Log.info(`Starting module: ${this.name}`);
+        this.log(['Module starting']);
 
         this.nodeHelperConfig = {
             subreddit: this.config.subreddit,
@@ -190,7 +192,8 @@ Module.register('MMM-RedditDisplay', {
      *
      * @return {void}
      */
-    initializeUpdate () {
+    initializeUpdate() {
+        this.log(['Sending REDDIT_CONFIG notification to node helper:', this.nodeHelperConfig]);
         this.sendSocketNotification('REDDIT_CONFIG', { config: this.nodeHelperConfig });
     },
 
@@ -213,10 +216,10 @@ Module.register('MMM-RedditDisplay', {
             this.handlePostsError(payload);
         }
 
-        this.log(['is rotating', isRotatingPosts]);
-        this.log(['updating immediately', shouldUpdateImmediately]);
+        this.log(['is rotating', this.rotator !== null]);
+        this.log(['updating immediately', !this.rotator || this.config.forceImmediateUpdate]);
 
-        this.initializeRefreshDom(shouldUpdateImmediately);
+        this.initializeRefreshDom(!this.rotator || this.config.forceImmediateUpdate);
     },
 
     /**
@@ -225,27 +228,41 @@ Module.register('MMM-RedditDisplay', {
      * @param  {Object} payload
      * @return {void}
      */
-    handleReturnedPosts (payload) {
-        let hasValidPosts = !!payload.posts.length;
+     
+handleReturnedPosts(payload) {
+    const hasValidPosts = payload.posts && payload.posts.length > 0;
 
-        this.log(['Received posts from backend', hasValidPosts]);
+    this.log(['Received posts from backend', hasValidPosts]);
 
-        this.hasValidPosts = hasValidPosts;
-        this.stagedPosts = payload.posts;
+    if (hasValidPosts) {
+        this.log(['Payload Posts (before modification)', payload.posts]);
+
+        // Update the existing posts instead of clearing them
+        this.stagedPosts.push(...payload.posts);
+        this.log(['Staged Posts (after modification)', this.stagedPosts]);
+
         this.stagedPostSets = this.getPostSets(this.stagedPosts, this.config.show);
-        this.waitingToDeploy = true;
-        this.receivedPostsTime = new Date();
-    },
+        this.log(['Staged Post Sets', this.stagedPostSets]);
+    }
+    this.log(['Staged Posts (before sending to frontend)', this.stagedPosts]);
 
+    // Always send the posts to the frontend, whether there are new posts or not
+    this.log(['Sending data to the frontend', { posts: this.stagedPosts }]);
+    this.sendSocketNotification('REDDIT_POSTS', { posts: this.stagedPosts });
+
+    this.waitingToDeploy = true;
+    this.receivedPostsTime = new Date();
+},
+    
     /**
      * Perform error handling for a backend error
      *
      * @param  {Object} payload
      * @return {void}
      */
-    handlePostsError (payload) {
+    handlePostsError(payload) {
         this.hasValidPosts = false;
-        this.log([payload.message]);
+        this.log(['Error fetching posts:', payload.message]);
     },
 
     /**
@@ -293,6 +310,7 @@ Module.register('MMM-RedditDisplay', {
      * @return {void}
      */
     initializeRefreshDom (existingCycleIsComplete) {
+     this.log(['initializeRefreshDom called']);
         // If nothing exists in the DOM
         if (this.posts.length === 0) {
             this.log(['posts have no length']);
@@ -327,6 +345,8 @@ Module.register('MMM-RedditDisplay', {
      */
     triggerRefresh (wrapperExists) {
         this.deployPosts();
+        this.log(['triggerRefresh called']);
+        
         this.deleteWrapperElement(wrapperExists);
         this.updateDom();
         this.resetStagedPosts();
@@ -687,33 +707,37 @@ Module.register('MMM-RedditDisplay', {
         return colCount;
     },
 
-    /**
-     * Get td element with a nested div to ensure a defined with
-     *
-     * @param  {Element|null} td
-     * @param  {String|Array} className
-     * @param  {String|null} html
-     * @return {Element}
-     */
-    getFixedColumn (td, className, html) {
-        let div = document.createElement('div');
+/**
+ * Get td element with a nested div to ensure a defined with
+ *
+ * @param  {Element|null} td
+ * @param  {String|Array} className
+ * @param  {String|null} html
+ * @return {Element}
+ */
+getFixedColumn(td, className, html) {
+    let div = document.createElement('div');
 
-        if (this.helper.argumentExists(className) && className.trim() !== '') {
-        this.addClasses(div, className);
+    if (this.helper.argumentExists(className)) {
+        if (typeof className === 'string' && className.trim() !== '') {
+            this.addClasses(div, className);
+        } else if (Array.isArray(className) && className.length > 0) {
+            this.addClasses(div, className.join(' '));
         }
+    }
 
-        if (!this.helper.argumentExists(td)) {
-            td = this.getTd();
-        }
+    if (!this.helper.argumentExists(td)) {
+        td = this.getTd();
+    }
 
-        if (this.helper.argumentExists(html)) {
-            div.innerHTML = html;
-        }
+    if (this.helper.argumentExists(html)) {
+        div.innerHTML = html;
+    }
 
-        td.appendChild(div);
+    td.appendChild(div);
 
-        return td;
-    },
+    return td;
+},
 
     /**
      * If the first argument is true, append the 3rd argument to the 2nd
@@ -766,23 +790,28 @@ Module.register('MMM-RedditDisplay', {
         return td;
     },
 
-    /**
-     * Add classes to the given element
-     *
-     * @param {Element} element
-     * @param {String|Array} classes
-     * @return {void}
-     */
-    addClasses (element, classes) {
-        if (this.helper.isString(classes)) {
-            element.classList.add(classes);
-        } else if (Array.isArray(classes)) {
-            // Strip out empty strings
-            classes = classes.filter((item) => item !== '');
-
-            element.classList.add(...classes);
-        }
-    },
+/**
+ * Add classes to the given element
+ *
+ * @param {Element} element
+ * @param {String|Array} classes
+ * @return {void}
+ */
+ addClasses(element, classes) {
+    if (this.helper.isString(classes)) {
+        // Split class names and add each one individually
+        classes.split(/\s+/).forEach(className => {
+            if (className.trim() !== '') {
+                element.classList.add(className.trim());
+            }
+        });
+    } else if (Array.isArray(classes)) {
+        // Strip out empty strings and add each class from the array
+        classes.filter((item) => item.trim() !== '').forEach(className => {
+            element.classList.add(className.trim());
+        });
+    }
+},
 
     /**
      * Return an image element or div with a class name that utilizes a background image
@@ -792,27 +821,31 @@ Module.register('MMM-RedditDisplay', {
      * @param  {Number} maxHeight
      * @return {Element}
      */
-    getImage (source, width, maxHeight) {
-        let image;
+getImage(source, width, maxHeight) {
+    let image;
 
-        if (source.indexOf('http') > -1) {
-            image = document.createElement('img');
-            image.src = source;
-        } else {
-            image = document.createElement('div');
-            image.classList.add(source);
-        }
+    if (source.indexOf('http') > -1) {
+        image = document.createElement('img');
+        image.src = source;
+} else {
+    image = document.createElement('div');
+    if (typeof source === 'string' && source.trim() !== '') {
+        // Add the class only if source is a non-empty string
+        image.classList.add(source);
+    }
+}
 
-        if (this.helper.argumentExists(width)) {
-            image.width = width;
-        }
 
-        if (this.helper.argumentExists(maxHeight)) {
-            image.style.maxHeight = maxHeight + 'px';
-        }
+    if (this.helper.argumentExists(width)) {
+        image.width = width;
+    }
 
-        return image;
-    },
+    if (this.helper.argumentExists(maxHeight)) {
+        image.style.maxHeight = maxHeight + 'px';
+    }
+
+    return image;
+},
 
     /**
      * Format numbers over 10,000
@@ -886,6 +919,7 @@ Module.register('MMM-RedditDisplay', {
      */
     resetCurrentPostSetIndex () {
         this.currentPostSetIndex = 0;
+        this.log(['resetting currentPostSetIndex']);
     },
 
     /**
