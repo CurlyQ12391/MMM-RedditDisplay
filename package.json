@@ -6,8 +6,6 @@
   "author": "CurlyQ12391",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.24.0",
-    "uuid": "^8.3.2",
     "node-fetch": "^2.6.1"
   },
   "keywords": [
