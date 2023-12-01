@@ -20,6 +20,7 @@ module.exports = NodeHelper.create({
         'high',
     ],
 
+ 
     /**
      * Log the the helper has started
      *
@@ -38,60 +39,94 @@ module.exports = NodeHelper.create({
      */
     socketNotificationReceived (notification, payload) {
         if (notification === 'REDDIT_CONFIG') {
+            console.log('Received REDDIT_CONFIG notification with payload:', payload);
             this.config = payload.config;
             this.getData();
         }
     },
 
-    sendData (obj) {
-        this.sendSocketNotification('REDDIT_POSTS', obj);
+    initialize() {
+        // This is where you can set up initial configurations or data.
+        // This method is called once when the module is loaded.
     },
+
+    initializeUpdate() {
+        // This is where you can set up schedules for periodic updates.
+        // This method is called when the module is loaded and at intervals defined by updateInterval.
+        this.getData();
+        setInterval(() => {
+            this.getData();
+        }, this.config.updateInterval);
+    },
+
+   sendData (obj) {
+       console.log('Sending data to the frontend:', obj);
+       this.sendSocketNotification('REDDIT_POSTS', { posts: obj.posts });
+   },
 
     /**
      * Make request to reddit and send posts back to MM frontend
      *
      * @return {void}
      */
-    async getData () {
+async getData() {
+    try {
         let url = this.getUrl(this.config),
             posts = [],
             body;
+            
+        console.log('Fetching data from URL:', url);
 
-            var response = await fetch(url)
-            if (!response.status === 200) {
-                console.log(`Error fetching country stats: ${response.statusCode} ${response.statusText}`)
-            }
+        var response = await fetch(url);
 
-            body = await response.json()
-            if (typeof body.data !== "undefined") {
-                if (typeof body.data.children !== "undefined") {
-                    body.data.children.forEach((post) => {
-                        let temp = {};
+        if (response.status !== 200) {
+            console.log(`Error fetching Reddit data: ${response.status} ${response.statusText}`);
+            return;
+        }
 
-                        temp.title = this.formatTitle(post.data.title);
-                        temp.score = post.data.score;
-                        temp.thumbnail = post.data.thumbnail;
-                        temp.src = this.getImageUrl(post.data.preview, post.data.thumbnail),
-                        temp.gilded = post.data.gilded;
-                        temp.num_comments = post.data.num_comments;
-                        temp.subreddit = post.data.subreddit;
-                        temp.author = post.data.author;
+        body = await response.json();
 
-                        // Skip image posts that do not have images
-                        if (this.config.displayType !== 'image' || temp.src !== null) {
-                            posts.push(temp);
-                        }
-                    });
+        if (typeof body.data !== 'undefined') {
+            if (typeof body.data.children !== 'undefined') {
+                console.log('Received Reddit posts data:', body.data.children);
 
-                    this.sendData({posts: posts});
-                } else {
-                    this.sendError('No posts returned. Ensure the subreddit name is spelled correctly. ' +
-                        'Private subreddits are also inaccessible');
-                }
+                body.data.children.forEach((post) => {
+                    let temp = {};
+
+                    temp.title = this.formatTitle(post.data.title);
+                    temp.score = post.data.score;
+                    temp.thumbnail = post.data.thumbnail;
+                    temp.src = this.getImageUrl(post);
+                    temp.gilded = post.data.gilded;
+                    temp.num_comments = post.data.num_comments;
+                    temp.subreddit = post.data.subreddit;
+                    temp.author = post.data.author;
+
+                    // Skip image posts that do not have images
+                    if (this.config.displayType !== 'image' || temp.src !== null) {
+                        posts.push(temp);
+                    } else {
+                        console.log('Skipped post:', post);
+                    }
+                });
+
+                console.log('Processed Posts:', posts);
+
+                this.sendData({ posts: posts });
             } else {
-                this.sendError(['Invalid response body', body]);
+                console.log('No children found in Reddit data:', body);
+                this.sendError('No posts returned. Ensure the subreddit name is spelled correctly. ' +
+                    'Private subreddits are also inaccessible');
             }
-    },
+        } else {
+            console.log('Invalid response body from Reddit:', body);
+            this.sendError(['Invalid response body', body]);
+        }
+    } catch (error) {
+        console.error('Error during Reddit data retrieval:', error);
+        this.sendError('An error occurred during Reddit data retrieval');
+    }
+},
 
     /**
      * Get reddit URL based on user configuration
@@ -164,52 +199,17 @@ module.exports = NodeHelper.create({
      * @param  {String} thumbnail
      * @return {String}
      */
-    getImageUrl (preview, thumbnail) {
-        if (this.skipNonImagePost(preview, thumbnail)) {
-            return null;
-        }
+   getImageUrl(post) {
+       return this.skipNonImagePost(post) ? null : post.data.url_overridden_by_dest || null;
+   },
 
-        let allPostImages = this.getAllImages(preview.images[0]),
-            imageCount = allPostImages.length,
-            qualityIndex = this.qualityIndex.indexOf(this.config.imageQuality),
-            qualityPercent = qualityIndex / 4,
-            imageIndex;
+   skipNonImagePost(post) {
+       if (!post || !post.data || typeof post.data.url_overridden_by_dest !== 'string') {
+           return true;
+       }
 
-        if (imageCount > 5) {
-            imageIndex = Math.round(qualityPercent * imageCount);
-        } else {
-            imageIndex = Math.floor(qualityPercent * imageCount);
-        }
-
-        return allPostImages[imageIndex].url;
-    },
-
-    /**
-     * Determine if the current post is not an image post
-     *
-     * @param  {Object} preview
-     * @param  {String} thumbnail
-     * @return {Boolean}
-     */
-    skipNonImagePost (preview, thumbnail) {
-        let previewUndefined = typeof preview === "undefined",
-            nonImageThumbnail = thumbnail.indexOf('http') === -1,
-            hasImages, firstImageHasSource;
-
-        if (!previewUndefined && !nonImageThumbnail) {
-            hasImages = preview.hasOwnProperty('images');
-
-            if (hasImages) {
-                firstImageHasSource = preview.images[0].hasOwnProperty('source');
-
-                if (firstImageHasSource) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    },
+       return false;
+   },
 
     /**
      * Get set of all image resolutions
