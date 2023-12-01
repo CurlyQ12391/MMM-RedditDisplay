@@ -8,7 +8,7 @@
   "dependencies": {
     "axios": "^0.24.0",
     "uuid": "^8.3.2",
-    "reddit.js": "^0.1.4"
+    "node-fetch": "^2.6.1"
   },
   "keywords": [
     "MM",
