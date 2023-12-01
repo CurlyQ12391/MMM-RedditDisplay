@@ -6,12 +6,62 @@
  */
 const MILLISECONDS_IN_MINUTE = 60 * 1000;
 
+const axios = require("axios");
+const RedditImageEntry = require("./classes/RedditImageEntry");
+
+class RedditApiImageGetter {
+  constructor(config) {
+    this.config = config;
+  }
+
+  // Quick function that gets the current hot entries
+  // Returns a Promise
+  getHotImagesOfSubReddit(subreddit = "ProgrammerHumor") {
+    const redditUrl = `https://www.reddit.com/r/${subreddit}/hot.json`;
+    return this.getJsonFromReddit(subreddit, redditUrl);
+  }
+
+  // Quick function that gets the current top entries
+  // Returns a Promise
+  getTopImagesOfSubReddit(subreddit = "ProgrammerHumor") {
+    const redditUrl = `https://www.reddit.com/r/${subreddit}/top.json`;
+    return this.getJsonFromReddit(subreddit, redditUrl);
+  }
+
+  // Pass in the name of the subreddit and the URL to
+  // the JSON endpoint, this can either be hot/popular/top
+  // i.e. 'https://www.reddit.com/r/programmerhumor/hot.json'
+  //
+  // Returns a Promise
+  getJsonFromReddit(subreddit, redditUrl) {
+    return new Promise(function (resolve, reject) {
+      axios
+        .get(redditUrl)
+        .then(function (response) {
+          const dataChildren = response.data.data.children;
+          const redditImagePosts = dataChildren.map(
+            (child) => new RedditImageEntry(child.data, subreddit)
+          );
+          resolve(redditImagePosts);
+        })
+        .catch(function (error) {
+          console.log(error);
+          reject(error);
+        })
+        .finally(function () {
+          // Do stuff?
+          // Maybe allow devs to add another function to call?
+        });
+    });
+  }
+}
+
 Module.register('MMM-RedditDisplay', {
-    /**
-     * List of default configurations
-     * @type {Object}
-     */
-    defaults: {
+  /**
+   * List of default configurations
+   * @type {Object}
+   */
+  defaults: {
         subreddit: 'all',
         type: 'hot',
         postIdList: [], // TODO: Implement this
@@ -49,47 +99,51 @@ Module.register('MMM-RedditDisplay', {
         debug: true,
     },
 
-    posts: [],
-    postSets: [],
-    stagedPosts: [],
-    stagedPostSets: [],
-    waitingToDeploy: false,
-    nodeHelperConfig: {},
-    currentPostSetIndex: 0,
-    rotator: null,
-    updater: null,
-    hasValidPosts: true,
-    receivedPostsTime: null,
-    domElements: {
-        wrapperId: 'MMM-RedditDisplay-wrapper',
-        sliderId: 'MMM-RedditDisplay-slider',
-    },
+ posts: [],
+  postSets: [],
+  stagedPosts: [],
+  stagedPostSets: [],
+  waitingToDeploy: false,
+  nodeHelperConfig: {},
+  currentPostSetIndex: 0,
+  rotator: null,
+  updater: null,
+  hasValidPosts: true,
+  receivedPostsTime: null,
+  domElements: {
+    wrapperId: 'MMM-RedditDisplay-wrapper',
+    sliderId: 'MMM-RedditDisplay-slider',
+  },
 
-    getStyles() {
-        return [
-            this.file('MMM-RedditDisplay.css'),
-        ];
-    },
+  getStyles() {
+    return [this.file('MMM-RedditDisplay.css')];
+  },
 
-    start() {
-        Log.info(`Starting module: ${this.name}`);
-        this.nodeHelperConfig = {
-            subreddit: this.config.subreddit,
-            type: this.config.type,
-            displayType: this.config.displayType,
-            count: this.config.count,
-            imageQuality: this.config.imageQuality,
-            characterLimit: this.config.characterLimit,
-            titleReplacements: this.config.titleReplacements,
-        };
+start() {
+    console.log(`Starting module: ${this.name}`);
+    this.nodeHelperConfig = {
+      subreddit: this.config.subreddit,
+      type: this.config.type,
+      displayType: this.config.displayType,
+      count: this.config.count,
+      imageQuality: this.config.imageQuality,
+      characterLimit: this.config.characterLimit,
+      titleReplacements: this.config.titleReplacements,
+    };
 
-        if (this.config.showAll) {
-            this.setConfigShowAll();
-        }
+    try {
+      this.redditApi = new RedditApiImageGetter(this.nodeHelperConfig);
+    } catch (error) {
+      console.error('Error during RedditApiImageGetter instantiation:', error);
+    }
 
-        this.initializeUpdate();
-        this.setUpdateInterval();
-    },
+    if (this.config.showAll) {
+      this.setConfigShowAll();
+    }
+
+    this.initializeUpdate();
+    this.setUpdateInterval();
+  },
 
     setUpdateInterval() {
         this.updater = setInterval(() => {
@@ -108,13 +162,22 @@ Module.register('MMM-RedditDisplay', {
         this.config.showSubreddit = true;
     },
 
-    initializeUpdate() {
-        this.sendSocketNotification('REDDIT_CONFIG', { config: this.nodeHelperConfig });
-    },
+      initializeUpdate() {
+        // Fetch posts from the Reddit API based on module configuration
+        this.redditApi.getImagesOfSubReddit(this.config.subreddit, this.config.type)
+          .then(posts => {
+            this.sendSocketNotification('REDDIT_POSTS', { posts });
+          })
+          .catch(error => {
+            this.sendSocketNotification('REDDIT_POSTS_ERROR', { message: error.message });
+          });
+      },
+    
     socketNotificationReceived(notification, payload) {
-    console.log(`Received notification: ${notification}`, payload);
+        console.log(`Received notification: ${notification}`, payload);
 
         if (notification === 'REDDIT_POSTS') {
+        console.log('Received Reddit Posts:', payload);
             this.handleReturnedPosts(payload);
         } else if (notification === 'REDDIT_POSTS_ERROR') {
             this.handlePostsError(payload);
@@ -135,6 +198,11 @@ Module.register('MMM-RedditDisplay', {
         this.stagedPostSets = this.getPostSets(this.stagedPosts, this.config.show);
         this.waitingToDeploy = true;
         this.receivedPostsTime = new Date();
+
+        // You can choose to directly set this.posts and this.postSets here
+        // without saving to disk if that's what you want
+        this.deployPosts();
+        this.updateDom();
     },
 
     handlePostsError(payload) {
@@ -249,26 +317,25 @@ Module.register('MMM-RedditDisplay', {
         wrapper.style.width = this.config.width + 'px';
     },
 
-createPostElement(post, postIndex, setIndex) {
-    let postElement = document.createElement('div');
-    postElement.className = 'reddit-post';
+    createPostElement(post, postIndex, setIndex) {
+        let postElement = document.createElement('div');
+        postElement.className = 'reddit-post';
 
-    if (post && typeof post === 'object') { // Add this check
-        if (this.config.showHeader) {
-            postElement.appendChild(this.getHeaderElement(post));
+        if (post && typeof post === 'object') { // Add this check
+            if (this.config.showHeader) {
+                postElement.appendChild(this.getHeaderElement(post));
+            }
+
+            if (this.config.showThumbnail) {
+                postElement.appendChild(this.getThumbnailElement(post));
+            }
+
+            postElement.appendChild(this.getPostBodyElement(post, postIndex, setIndex));
         }
 
-        if (this.config.showThumbnail) {
-            postElement.appendChild(this.getThumbnailElement(post));
-        }
-
-        postElement.appendChild(this.getPostBodyElement(post, postIndex, setIndex));
-    }
-
-    return postElement;
-},
-
-    
+        return postElement;
+    },
+        
     getHeaderElement(post) {
         if (!post) {
             console.warn('getHeaderElement called with undefined post.');
@@ -332,63 +399,63 @@ createPostElement(post, postIndex, setIndex) {
         return thumbnailElement;
     },
 
-getPostBodyElement(post, postIndex, setIndex) {
-    let postBodyElement = document.createElement('div');
-    postBodyElement.className = 'reddit-body';
+    getPostBodyElement(post, postIndex, setIndex) {
+        let postBodyElement = document.createElement('div');
+        postBodyElement.className = 'reddit-body';
 
-    if (post && typeof post === 'object') { // Add this check
-        if (this.config.showRank) {
-            let rankElement = document.createElement('div');
-            rankElement.className = 'reddit-rank-body';
-            rankElement.innerHTML = post.rank;
-            postBodyElement.appendChild(rankElement);
+        if (post && typeof post === 'object') { // Add this check
+            if (this.config.showRank) {
+                let rankElement = document.createElement('div');
+                rankElement.className = 'reddit-rank-body';
+                rankElement.innerHTML = post.rank;
+                postBodyElement.appendChild(rankElement);
+            }
+
+            if (this.config.showScore) {
+                let scoreElement = document.createElement('div');
+                scoreElement.className = 'reddit-score-body';
+                scoreElement.innerHTML = post.score;
+                postBodyElement.appendChild(scoreElement);
+            }
+
+            if (this.config.showNumComments) {
+                let commentsElement = document.createElement('div');
+                commentsElement.className = 'reddit-comments-body';
+                commentsElement.innerHTML = post.num_comments;
+                postBodyElement.appendChild(commentsElement);
+            }
+
+            if (this.config.showGilded) {
+                let gildedElement = document.createElement('div');
+                gildedElement.className = 'reddit-gilded-body';
+                gildedElement.innerHTML = post.gilded;
+                postBodyElement.appendChild(gildedElement);
+            }
+
+            if (this.config.showAuthor) {
+                let authorElement = document.createElement('div');
+                authorElement.className = 'reddit-author-body';
+                authorElement.innerHTML = `by ${post.author}`;
+                postBodyElement.appendChild(authorElement);
+            }
+
+            if (this.config.showSubreddit) {
+                let subredditElement = document.createElement('div');
+                subredditElement.className = 'reddit-subreddit-body';
+                subredditElement.innerHTML = `/r/${post.subreddit}`;
+                postBodyElement.appendChild(subredditElement);
+            }
+
+            if (this.config.showTitle) {
+                let titleElement = document.createElement('div');
+                titleElement.className = 'reddit-title';
+                titleElement.innerHTML = this.getFormattedTitle(post.title);
+                postBodyElement.appendChild(titleElement);
+            }
         }
 
-        if (this.config.showScore) {
-            let scoreElement = document.createElement('div');
-            scoreElement.className = 'reddit-score-body';
-            scoreElement.innerHTML = post.score;
-            postBodyElement.appendChild(scoreElement);
-        }
-
-        if (this.config.showNumComments) {
-            let commentsElement = document.createElement('div');
-            commentsElement.className = 'reddit-comments-body';
-            commentsElement.innerHTML = post.num_comments;
-            postBodyElement.appendChild(commentsElement);
-        }
-
-        if (this.config.showGilded) {
-            let gildedElement = document.createElement('div');
-            gildedElement.className = 'reddit-gilded-body';
-            gildedElement.innerHTML = post.gilded;
-            postBodyElement.appendChild(gildedElement);
-        }
-
-        if (this.config.showAuthor) {
-            let authorElement = document.createElement('div');
-            authorElement.className = 'reddit-author-body';
-            authorElement.innerHTML = `by ${post.author}`;
-            postBodyElement.appendChild(authorElement);
-        }
-
-        if (this.config.showSubreddit) {
-            let subredditElement = document.createElement('div');
-            subredditElement.className = 'reddit-subreddit-body';
-            subredditElement.innerHTML = `/r/${post.subreddit}`;
-            postBodyElement.appendChild(subredditElement);
-        }
-
-        if (this.config.showTitle) {
-            let titleElement = document.createElement('div');
-            titleElement.className = 'reddit-title';
-            titleElement.innerHTML = this.getFormattedTitle(post.title);
-            postBodyElement.appendChild(titleElement);
-        }
-    }
-
-    return postBodyElement;
-},
+        return postBodyElement;
+    },
 
     getFormattedTitle(title) {
         // Apply title replacements if configured
