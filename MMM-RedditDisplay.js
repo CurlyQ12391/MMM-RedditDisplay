@@ -31,10 +31,10 @@ Module.register('MMM-RedditDisplay', {
         colorText: true,
 
         // Headlines only
-        showThumbnail: false, // Irrelevant for image posts
+        showThumbnail: true, // Irrelevant for image posts
 
         // Image only
-        maxImageHeight: 500, // In pixels
+        maxImageHeight: 400, // In pixels
         imageQuality: 'mid-high', // Options: 'low', 'mid', 'mid-high', 'high'
         showTitle: true, // Non-configurable for text base subs
 
@@ -821,31 +821,33 @@ getFixedColumn(td, className, html) {
      * @param  {Number} maxHeight
      * @return {Element}
      */
-getImage(source, width, maxHeight) {
-    let image;
+    getImage(source, width, maxHeight) {
+        let image;
 
-    if (source.indexOf('http') > -1) {
-        image = document.createElement('img');
-        image.src = source;
-} else {
-    image = document.createElement('div');
-    if (typeof source === 'string' && source.trim() !== '') {
-        // Add the class only if source is a non-empty string
-        image.classList.add(source);
-    }
-}
+        if (source && source.trim() !== '') {
+            if (source.indexOf('http') > -1) {
+                image = document.createElement('img');
+                image.src = source;
+            } else {
+                image = document.createElement('div');
+                image.classList.add(source);
+            }
+        } else {
+            // If source is empty or null, create a placeholder div
+            image = document.createElement('div');
+            image.classList.add('placeholder-thumbnail'); // Add a class for styling purposes
+        }
 
+        if (this.helper.argumentExists(width)) {
+            image.width = width;
+        }
 
-    if (this.helper.argumentExists(width)) {
-        image.width = width;
-    }
+        if (this.helper.argumentExists(maxHeight)) {
+            image.style.maxHeight = maxHeight + 'px';
+        }
 
-    if (this.helper.argumentExists(maxHeight)) {
-        image.style.maxHeight = maxHeight + 'px';
-    }
-
-    return image;
-},
+        return image;
+    },
 
     /**
      * Format numbers over 10,000
