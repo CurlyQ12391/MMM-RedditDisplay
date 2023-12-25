@@ -1,4 +1,5 @@
 const fetch = require('node-fetch');
+const sharp = require('sharp'); // Import sharp library
 const NodeHelper = require('node_helper');
 
 module.exports = NodeHelper.create({
@@ -69,64 +70,85 @@ module.exports = NodeHelper.create({
      *
      * @return {void}
      */
-async getData() {
-    try {
-        let url = this.getUrl(this.config),
-            posts = [],
-            body;
-            
-        console.log('Fetching data from URL:', url);
+    async getData() {
+        try {
+            let url = this.getUrl(this.config),
+                posts = [],
+                body;
 
-        var response = await fetch(url);
+            console.log('Fetching data from URL:', url);
 
-        if (response.status !== 200) {
-            console.log(`Error fetching Reddit data: ${response.status} ${response.statusText}`);
-            return;
-        }
+            var response = await fetch(url);
 
-        body = await response.json();
-
-        if (typeof body.data !== 'undefined') {
-            if (typeof body.data.children !== 'undefined') {
-                console.log('Received Reddit posts data:', body.data.children);
-
-                body.data.children.forEach((post) => {
-                    let temp = {};
-
-                    temp.title = this.formatTitle(post.data.title);
-                    temp.score = post.data.score;
-                    temp.thumbnail = post.data.thumbnail;
-                    temp.src = this.getImageUrl(post);
-                    temp.gilded = post.data.gilded;
-                    temp.num_comments = post.data.num_comments;
-                    temp.subreddit = post.data.subreddit;
-                    temp.author = post.data.author;
-
-                    // Skip image posts that do not have images
-                    if (this.config.displayType !== 'image' || temp.src !== null) {
-                        posts.push(temp);
-                    } else {
-                        console.log('Skipped post:', post);
-                    }
-                });
-
-                console.log('Processed Posts:', posts);
-
-                this.sendData({ posts: posts });
-            } else {
-                console.log('No children found in Reddit data:', body);
-                this.sendError('No posts returned. Ensure the subreddit name is spelled correctly. ' +
-                    'Private subreddits are also inaccessible');
+            if (response.status !== 200) {
+                console.log(`Error fetching Reddit data: ${response.status} ${response.statusText}`);
+                return;
             }
-        } else {
-            console.log('Invalid response body from Reddit:', body);
-            this.sendError(['Invalid response body', body]);
+
+            body = await response.json();
+
+            if (typeof body.data !== 'undefined') {
+                if (typeof body.data.children !== 'undefined') {
+                    console.log('Received Reddit posts data:', body.data.children);
+
+                    for (const post of body.data.children) {
+                        let temp = {};
+
+                        temp.title = this.formatTitle(post.data.title);
+                        temp.score = post.data.score;
+
+                        // Use the image URL to generate a thumbnail
+                        temp.thumbnail = await this.processThumbnail(post.data.url);
+
+                        temp.src = this.getImageUrl(post);
+                        temp.gilded = post.data.gilded;
+                        temp.num_comments = post.data.num_comments;
+                        temp.subreddit = post.data.subreddit;
+                        temp.author = post.data.author;
+
+                        // Skip image posts that do not have images
+                        if (this.config.displayType !== 'image' || temp.src !== null) {
+                            posts.push(temp);
+                        } else {
+                            console.log('Skipped post:', post);
+                        }
+                    }
+
+                    console.log('Processed Posts:', posts);
+
+                    this.sendData({ posts: posts });
+                } else {
+                    console.log('No children found in Reddit data:', body);
+                    this.sendError('No posts returned. Ensure the subreddit name is spelled correctly. ' +
+                        'Private subreddits are also inaccessible');
+                }
+            } else {
+                console.log('Invalid response body from Reddit:', body);
+                this.sendError(['Invalid response body', body]);
+            }
+        } catch (error) {
+            console.error('Error during Reddit data retrieval:', error);
+            this.sendError('An error occurred during Reddit data retrieval');
         }
-    } catch (error) {
-        console.error('Error during Reddit data retrieval:', error);
-        this.sendError('An error occurred during Reddit data retrieval');
-    }
-},
+    },
+
+    async processThumbnail(imageUrl) {
+        try {
+            const response = await fetch(imageUrl);
+            const imageBuffer = await response.buffer();
+
+            // Manually resize the image to a specific width (e.g., 70px)
+            const resizedImageBuffer = await sharp(imageBuffer)
+                .resize({ width: 70 })
+                .toBuffer();
+
+            // Encode the resized image as base64
+            return `data:image/jpeg;base64,${resizedImageBuffer.toString('base64')}`;
+        } catch (error) {
+            console.error('Error processing thumbnail:', error);
+            return null;
+        }
+    },
 
     /**
      * Get reddit URL based on user configuration
