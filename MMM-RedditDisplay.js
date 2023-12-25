@@ -1,3 +1,25 @@
+/* Magic Mirror
+ * Module: MMM-RedditDisplay
+ * 
+ * By CurlyQ12391 https://github.com/CurlyQ12391/MMM-RedditDisplay
+ * Forked from kjb085 https://github.com/kjb085/MMM-Reddit
+ */
+const MILLISECONDS_IN_MINUTE = 60 * 1000;
+
+// Function to generate a thumbnail
+function generateThumbnail() {
+  // Your thumbnail generation logic here
+  // Replace the following line with the actual thumbnail data
+  return 'data:image/jpeg;base64,...';
+}
+
+// Some code to generate thumbnail
+const thumbnail = generateThumbnail(); // This is where you create the thumbnail
+
+// Now remove the base64 prefix
+const base64Data = thumbnail.replace(/^data:image\/\w+;base64,/, '');
+
+
 Module.register('MMM-RedditDisplay', {
     /**
      * List of default configurations
@@ -9,9 +31,9 @@ Module.register('MMM-RedditDisplay', {
         apiUrl: 'https://www.reddit.com/r/', // Add this line with the base URL
         postIdList: [], // TODO: Implement this
         displayType: 'headlines', // Options: 'headlines', 'image' (for image, if post is album, only 1st image is shown)
-        count: 10,
-        show: 5,
-        width: 400, // In pixels
+        count: 3,
+        show: 2,
+        width: 250, // In pixels
         updateInterval: 15, // In minutes
         rotateInterval: 30, // In seconds
         forceImmediateUpdate: true,
@@ -34,7 +56,7 @@ Module.register('MMM-RedditDisplay', {
         showThumbnail: true, // Irrelevant for image posts
 
         // Image only
-        maxImageHeight: 400, // In pixels
+        maxImageHeight: 250, // In pixels
         imageQuality: 'mid-high', // Options: 'low', 'mid', 'mid-high', 'high'
         showTitle: true, // Non-configurable for text base subs
 
@@ -139,7 +161,7 @@ Module.register('MMM-RedditDisplay', {
      */
     start () {
         Log.info(`Starting module: ${this.name}`);
-        this.log(['Module starting']);
+        this.log(['Module starting']); // Log statement added
 
         this.nodeHelperConfig = {
             subreddit: this.config.subreddit,
@@ -193,7 +215,7 @@ Module.register('MMM-RedditDisplay', {
      * @return {void}
      */
     initializeUpdate() {
-        this.log(['Sending REDDIT_CONFIG notification to node helper:', this.nodeHelperConfig]);
+        this.log(['Sending REDDIT_CONFIG notification to node helper:', this.nodeHelperConfig]); // Log statement added
         this.sendSocketNotification('REDDIT_CONFIG', { config: this.nodeHelperConfig });
     },
 
@@ -216,8 +238,8 @@ Module.register('MMM-RedditDisplay', {
             this.handlePostsError(payload);
         }
 
-        this.log(['is rotating', this.rotator !== null]);
-        this.log(['updating immediately', !this.rotator || this.config.forceImmediateUpdate]);
+        this.log(['is rotating', this.rotator !== null]); // Log statement added
+        this.log(['updating immediately', !this.rotator || this.config.forceImmediateUpdate]); // Log statement added
 
         this.initializeRefreshDom(!this.rotator || this.config.forceImmediateUpdate);
     },
@@ -228,31 +250,30 @@ Module.register('MMM-RedditDisplay', {
      * @param  {Object} payload
      * @return {void}
      */
-     
-handleReturnedPosts(payload) {
-    const hasValidPosts = payload.posts && payload.posts.length > 0;
+         handleReturnedPosts(payload) {
+        const hasValidPosts = payload.posts && payload.posts.length > 0;
 
-    this.log(['Received posts from backend', hasValidPosts]);
+        this.log(['Received posts from backend', hasValidPosts]); // Log statement added
 
-    if (hasValidPosts) {
-        this.log(['Payload Posts (before modification)', payload.posts]);
+        if (hasValidPosts) {
+            this.log(['Payload Posts (before modification)', payload.posts]); // Log statement added
 
-        // Update the existing posts instead of clearing them
-        this.stagedPosts.push(...payload.posts);
-        this.log(['Staged Posts (after modification)', this.stagedPosts]);
+            // Update the existing posts instead of clearing them
+            this.stagedPosts.push(...payload.posts);
+            this.log(['Staged Posts (after modification)', this.stagedPosts]); // Log statement added
 
-        this.stagedPostSets = this.getPostSets(this.stagedPosts, this.config.show);
-        this.log(['Staged Post Sets', this.stagedPostSets]);
-    }
-    this.log(['Staged Posts (before sending to frontend)', this.stagedPosts]);
+            this.stagedPostSets = this.getPostSets(this.stagedPosts, this.config.show);
+            this.log(['Staged Post Sets', this.stagedPostSets]); // Log statement added
+        }
+        this.log(['Staged Posts (before sending to frontend)', this.stagedPosts]); // Log statement added
 
-    // Always send the posts to the frontend, whether there are new posts or not
-    this.log(['Sending data to the frontend', { posts: this.stagedPosts }]);
-    this.sendSocketNotification('REDDIT_POSTS', { posts: this.stagedPosts });
+        // Always send the posts to the frontend, whether there are new posts or not
+        this.log(['Sending data to the frontend', { posts: this.stagedPosts }]); // Log statement added
+        this.sendSocketNotification('REDDIT_POSTS', { posts: this.stagedPosts });
 
-    this.waitingToDeploy = true;
-    this.receivedPostsTime = new Date();
-},
+        this.waitingToDeploy = true;
+        this.receivedPostsTime = new Date();
+    },
     
     /**
      * Perform error handling for a backend error
@@ -310,17 +331,16 @@ handleReturnedPosts(payload) {
      * @return {void}
      */
     initializeRefreshDom (existingCycleIsComplete) {
-     this.log(['initializeRefreshDom called']);
+        this.log(['initializeRefreshDom called']); // Log statement added
         // If nothing exists in the DOM
         if (this.posts.length === 0) {
-            this.log(['posts have no length']);
-            // this.log([this.posts]);
+            this.log(['posts have no length']); // Log statement added
             this.triggerRefresh(false);
         }
         // If this is called from inside the rotator interval or if
         // no rotator interval exists
         else if (existingCycleIsComplete) {
-            this.log(['existing cycle complete']);
+            this.log(['existing cycle complete']); // Log statement added
             this.triggerRefresh(true);
             this.logTimeBetweenReceiveAndRefresh();
         }
@@ -345,8 +365,8 @@ handleReturnedPosts(payload) {
      */
     triggerRefresh (wrapperExists) {
         this.deployPosts();
-        this.log(['triggerRefresh called']);
-        
+        this.log(['triggerRefresh called']); // Log statement added
+
         this.deleteWrapperElement(wrapperExists);
         this.updateDom();
         this.resetStagedPosts();
@@ -385,14 +405,13 @@ handleReturnedPosts(payload) {
      *
      * @return {Element}
      */
-    getDom () {
+    getDom() {
         this.log('getting dom');
         let wrapperDiv = document.createElement('div'),
             postsDiv = document.createElement('div');
-            headerElement = document.createElement('header'),
-            sliderElement = null,
-            postSets = this.postSets;
-
+        headerElement = document.createElement('header'),
+        sliderElement = null,
+        postSets = this.postSets;
 
         wrapperDiv.id = this.domElements.wrapperId;
         wrapperDiv.style.width = this.config.width + 'px';
@@ -502,7 +521,7 @@ handleReturnedPosts(payload) {
      * @param  {Arrray} postSets
      * @return {Element}
      */
-    getContentSlider (postSets) {
+    getContentSlider(postSets) {
         let slider = document.createElement('div'),
             idxCounter = 0;
 
@@ -521,7 +540,11 @@ handleReturnedPosts(payload) {
             postSet.forEach((post, idx) => {
                 let postIndex = idx + idxCounter + 1;
 
-                table.appendChild(this.createPostRow(post, postIndex));
+                if (this.config.displayType === 'image') {
+                    table.appendChild(this.createImageRow(post, postIndex));
+                } else {
+                    table.appendChild(this.createHeadlineRow(post, postIndex));
+                }
             });
 
             idxCounter += postSet.length;
@@ -541,27 +564,35 @@ handleReturnedPosts(payload) {
      * @return {Element}
      */
     createPostRow (post, postIndex) {
+        let wrapper = document.createElement('div'),
+        imageRow = document.createElement('tr'),
+        image = this.getImage(post.src, null, this.config.maxImageHeight),
+        imageContainer = document.createElement('div'),
+        imageTd = this.getTd(totalColumns, 'col'),
+        colored = this.config.colorText ? 'colored' : '',
+        row2, row3, showGilded, gildedText;
+        
         if (this.config.displayType === 'image') {
             return this.createImageRow(post, postIndex);
         } else {
-            return this.createHeadlinetRow(post, postIndex);
+            return this.createHeadlineRow(post, postIndex);
         }
+        return wrapper;
     },
 
     /**
-     * Create DOM element for headline based user config
-     * TODO: Refactor this - ideally implement some sort of templatization
+     * Create DOM element for the given post based on 'headlines' display type
      *
      * @param  {Object} post
      * @param  {Number} postIndex
      * @return {Element}
      */
-    createHeadlinetRow (post, postIndex) {
-        let hasTwoRows = this.isMultiTextRow(),
-            wrapper = document.createElement('div'),
-            rowSpan = hasTwoRows ? '2' : '1',
+    createHeadlineRow(post, postIndex) {
+        let wrapper = document.createElement('div'),
             row1 = document.createElement('tr'),
             row2 = document.createElement('tr'),
+            rowSpan = 2,
+            hasTwoRows = true,  // Always have two rows
             rank = this.getTd(rowSpan, 'row'),
             score = this.getTd(rowSpan, 'row'),
             thumbnail = this.getTd(rowSpan, 'row'),
@@ -571,35 +602,30 @@ handleReturnedPosts(payload) {
             gildedText = post.gilded > 1 ? 'x' + post.gilded : '',
             colored = this.config.colorText ? 'colored' : '';
 
-        this.appendIfShown(this.config.showRank, row1, this.getFixedColumn(rank, ['rank', colored], '#' + postIndex));
-        this.appendIfShown(this.config.showScore, row1, this.getFixedColumn(score, ['score', colored], this.formatScore(post.score)));
-
         // Always append image to thumbnail td, conditionally append td
         this.appendIfShown(true, thumbnail, image);
         this.appendIfShown(this.config.showThumbnail, row1, thumbnail, 'thumbnail');
 
-        // Always show post title for text based post rows
+        // Append rank and score elements to row1
+        this.appendIfShown(this.config.showRank, row1, this.getFixedColumn(rank, ['rank', colored], '#' + postIndex));
+        this.appendIfShown(this.config.showScore, row1, this.getFixedColumn(score, ['score', colored], this.formatScore(post.score)));
+
+        // Always show post title for text-based post rows
         this.appendIfShown(true, row1, 'td', 'title', post.title);
 
-        if (hasTwoRows) {
-            this.appendIfShown(this.config.showNumComments, details, 'span', 'comments', post.num_comments + ' comments');
-            this.appendIfShown(showGilded, details, 'span', 'gilded', gildedText);
-            this.appendIfShown(this.config.showSubreddit, details, 'span', 'subreddit', 'r/' + post.subreddit);
-            this.appendIfShown(this.config.showAuthor, details, 'span', 'author', 'by ' + post.author);
+        this.appendIfShown(this.config.showNumComments, details, 'span', 'comments', post.num_comments + ' comments');
+        this.appendIfShown(showGilded, details, 'span', 'gilded', gildedText);
+        this.appendIfShown(this.config.showSubreddit, details, 'span', 'subreddit', 'r/' + post.subreddit);
+        this.appendIfShown(this.config.showAuthor, details, 'span', 'author', 'by ' + post.author);
 
-            this.appendIfShown(true, row2, details, 'details');
+        this.appendIfShown(true, row2, details, 'details');
 
-            wrapper.appendChild(row1);
-            wrapper.appendChild(row2);
+        wrapper.appendChild(row1);
+        wrapper.appendChild(row2);
 
-            wrapper.classList.add('post-row', 'text-row');
+        wrapper.classList.add('post-row', 'text-row');
 
-            return wrapper;
-        } else {
-            row1.classList.add('post-row', 'text-row');
-
-            return row1;
-        }
+        return wrapper;
     },
 
     /**
@@ -610,61 +636,62 @@ handleReturnedPosts(payload) {
      * @param  {Number} postIndex
      * @return {Element}
      */
-    createImageRow (post, postIndex) {
-        let hasDetailRow = this.isMultiTextRow(),
-            hasTitleRow = this.config.showTitle,
-            totalRows = this.getImageRowCount(hasTitleRow, hasDetailRow),
-            imageRowOnly = totalRows === 1,
-            totalColumns = this.getImageColCount(imageRowOnly),
-            wrapper = document.createElement('div'),
-            imageRow = document.createElement('tr'),
-            image = this.getImage(post.src, null, this.config.maxImageHeight),
-            imageContainer = document.createElement('div'),
-            imageTd = this.getTd(totalColumns, 'col'),
-            colored = this.config.colorText ? 'colored' : '',
-            row2, row3, showGilded, gildedText;
+createImageRow(post, postIndex) {
+    let hasDetailRow = this.isMultiTextRow(),
+        hasTitleRow = this.config.showTitle,
+        totalRows = this.getImageRowCount(hasTitleRow, hasDetailRow),
+        imageRowOnly = totalRows === 1,
+        totalColumns = this.getImageColCount(imageRowOnly),
+        wrapper = document.createElement('div'),
+        imageRow = document.createElement('tr'),
+        imageContainer = document.createElement('div'),
+        imageTd = this.getTd(totalColumns, 'col'),
+        colored = this.config.colorText ? 'colored' : '',
+        row2, row3, showGilded, gildedText;
 
+    // Log thumbnail value
+    console.log('Thumbnail:', post.thumbnail);
 
-        // If rank is shown, force onto 1st row
-        this.appendIfShown(imageRowOnly && this.config.showRank, imageRow, this.getFixedColumn(null, ['rank', colored], '#' + postIndex));
+    // If rank is shown, force onto the 1st row
+    this.appendIfShown(imageRowOnly && this.config.showRank, imageRow, this.getFixedColumn(null, ['rank', colored], '#' + postIndex));
 
-        imageContainer.appendChild(image);
-        imageContainer.classList.add('image-container');
+    imageContainer.appendChild(this.getImage(post.thumbnail, null, this.config.maxImageHeight));
+    imageContainer.classList.add('image-container');
 
-        imageTd.appendChild(imageContainer);
-        this.appendIfShown(true, imageRow, imageTd, 'feature-image');
+    imageTd.appendChild(imageContainer);
+    this.appendIfShown(true, imageRow, imageTd, 'feature-image');
 
-        wrapper.appendChild(imageRow);
+    wrapper.appendChild(imageRow);
 
-        if (hasTitleRow) {
-            row2 = document.createElement('tr');
+    if (hasTitleRow) {
+        row2 = document.createElement('tr');
 
-            this.appendIfShown(this.config.showRank, row2, this.getFixedColumn(this.getTd(totalRows - 1, 'row'), ['rank', colored], '#' + postIndex));
-            this.appendIfShown(this.config.showScore, row2, this.getFixedColumn(this.getTd(totalRows - 1, 'row'), ['score', colored], this.formatScore(post.score)));
-            this.appendIfShown(this.config.showTitle, row2, 'td', 'title', post.title);
+        this.appendIfShown(this.config.showRank, row2, this.getFixedColumn(this.getTd(totalRows - 1, 'row'), ['rank', colored], '#' + postIndex));
+        this.appendIfShown(this.config.showScore, row2, this.getFixedColumn(this.getTd(totalRows - 1, 'row'), ['score', colored], this.formatScore(post.score)));
+        this.appendIfShown(this.config.showTitle, row2, 'td', 'title', post.title);
 
-            wrapper.appendChild(row2);
-        }
+        wrapper.appendChild(row2);
+    }
 
-        if (hasDetailRow) {
-            row3 = document.createElement('tr');
-            showGilded = this.config.showGilded && post.gilded,
-            gildedText = post.gilded > 1 ? 'x' + post.gilded : '';
-            details = this.getTd();
+    if (hasDetailRow) {
+        row3 = document.createElement('tr');
+        showGilded = this.config.showGilded && post.gilded;
+        gildedText = post.gilded > 1 ? 'x' + post.gilded : '';
+        let details = this.getTd();
 
-            this.appendIfShown(this.config.showNumComments, details, 'span', 'comments', post.num_comments + ' comments');
-            this.appendIfShown(showGilded, details, 'span', 'gilded', gildedText);
-            this.appendIfShown(this.config.showSubreddit, details, 'span', 'subreddit', 'r/' + post.subreddit);
-            this.appendIfShown(this.config.showAuthor, details, 'span', 'author', 'by ' + post.author);
+        this.appendIfShown(this.config.showNumComments, details, 'span', 'comments', post.num_comments + ' comments');
+        this.appendIfShown(showGilded, details, 'span', 'gilded', gildedText);
+        this.appendIfShown(this.config.showSubreddit, details, 'span', 'subreddit', 'r/' + post.subreddit);
+        this.appendIfShown(this.config.showAuthor, details, 'span', 'author', 'by ' + post.author);
 
-            this.appendIfShown(true, row3, details, 'details');
-            wrapper.appendChild(row3);
-        }
+        this.appendIfShown(true, row3, details, 'details');
+        wrapper.appendChild(row3);
+    }
 
-        wrapper.classList.add('post-row', 'image-row');
+    wrapper.classList.add('post-row', 'image-row');
 
-        return wrapper;
-    },
+    return wrapper;
+},
 
     /**
      * Determine if the user configuration require multiple table rows
@@ -821,21 +848,28 @@ getFixedColumn(td, className, html) {
      * @param  {Number} maxHeight
      * @return {Element}
      */
-    getImage(source, width, maxHeight) {
+    getImage(source, width, maxHeight, displayType) {
         let image;
 
-        if (source && source.trim() !== '') {
-            if (source.indexOf('http') > -1) {
+        if (displayType === 'headlines' && source && source.trim() !== '') {
+            // For headlines displayType with base64-encoded thumbnail
+            const base64Data = source.replace(/^data:image\/\w+;base64,/, '');
+            console.log('Base64 Data:', base64Data);
+            
+            const blob = new Blob([new Uint8Array(atob(base64Data).split('').map(char => char.charCodeAt(0)))], { type: 'image/jpeg' });
+            const blobUrl = URL.createObjectURL(blob);
+
+            image = document.createElement('img');
+            image.src = blobUrl;
+        } else {
+            // For regular images or empty sources
+            if (source && source.trim() !== '' && source.indexOf('http') > -1) {
                 image = document.createElement('img');
                 image.src = source;
             } else {
                 image = document.createElement('div');
                 image.classList.add(source);
             }
-        } else {
-            // If source is empty or null, create a placeholder div
-            image = document.createElement('div');
-            image.classList.add('placeholder-thumbnail'); // Add a class for styling purposes
         }
 
         if (this.helper.argumentExists(width)) {
@@ -848,7 +882,6 @@ getFixedColumn(td, className, html) {
 
         return image;
     },
-
     /**
      * Format numbers over 10,000
      *
@@ -869,10 +902,10 @@ getFixedColumn(td, className, html) {
      * @return {void}
      */
     setRotateInterval () {
-        this.log(['setting rotator']);
-        this.log(['rotator', this.rotator]);
+        this.log(['setting rotator']); // Log statement added
+        this.log(['rotator', this.rotator]); // Log statement added
         if (this.rotator !== null) {
-            this.log(['unset top']);
+            this.log(['unset top']); // Log statement added
             this.unsetRotateInterval();
         }
 
@@ -881,23 +914,31 @@ getFixedColumn(td, className, html) {
         this.rotator = setInterval(() => {
             let slider = document.getElementById(this.domElements.sliderId),
                 postSets = slider.children,
-                nextIndex = this.getNextPostSetIndex();
+                nextIndex = this.currentPostSetIndex + 1,
+                isLastIndex = nextIndex === postSets.length,
+                hasMultipleSets = postSets.length > 1;
 
-            // this.log(['index set', nextIndex]);
-            this.log(['index set', nextIndex]);
+            this.log(['rotating', isLastIndex && hasMultipleSets]); // Log statement added
+            this.log(['current post set index', this.currentPostSetIndex]); // Log statement added
+            this.log(['next index', nextIndex]); // Log statement added
 
-            if (nextIndex === 0 && this.waitingToDeploy && !this.config.forceImmediateUpdate) {
-                this.log(['waiting to deploy', this.waitingToDeploy]);
-                this.initializeRefreshDom(true);
+            if (isLastIndex && hasMultipleSets) {
+                this.resetCurrentPostSetIndex();
+                this.deployPosts();
+                this.updateDom();
+
+                // Only unset the interval if it has been more than 2 rotations
+                if (this.rotationCount > 1) {
+                    this.unsetRotateInterval();
+                    this.rotationCount = 0;
+                } else {
+                    this.rotationCount++;
+                }
             } else {
-                postSets[this.currentPostSetIndex].style.display = "none";
-                postSets[nextIndex].style.display = "initial";
-
-                this.currentPostSetIndex = nextIndex;
+                this.currentPostSetIndex++;
+                this.rotatorCycle();
             }
-        }, this.config.rotateInterval * 1000);
-
-        this.log(['rotator', this.rotator]);
+        }, this.config.displayTime * 1000);
     },
 
     /**
@@ -993,4 +1034,4 @@ getFixedColumn(td, className, html) {
             return (/boolean|number|string/).test(typeof variable);
         },
     }
-}); 
+});  
