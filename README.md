@@ -26,7 +26,7 @@ Just an installation of [Magic Mirror<sup>2</sup>](https://github.com/MichMich/M
 ```
 {
 	module: "MMM-RedditDisplay",
-	position: "top_right",
+	position: "top_right", //MM doesn't like middle/center positions
 	config: {
     	...
 	}
