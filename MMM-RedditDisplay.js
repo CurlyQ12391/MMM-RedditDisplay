@@ -6,57 +6,50 @@
  */
 const MILLISECONDS_IN_MINUTE = 60 * 1000;
 
-// Function to generate a thumbnail
-function generateThumbnail() {
-  // Your thumbnail generation logic here
-  // Replace the following line with the actual thumbnail data
-  return 'data:image/jpeg;base64,...';
-}
-
-// Some code to generate thumbnail
-const thumbnail = generateThumbnail(); // This is where you create the thumbnail
-
-// Now remove the base64 prefix
-const base64Data = thumbnail.replace(/^data:image\/\w+;base64,/, '');
-
-
 Module.register('MMM-RedditDisplay', {
     /**
      * List of default configurations
      * @type {Object}
      */
     defaults: {
-    	subreddit: 'all',
-        type: 'hot',
+    	subreddit: 'all', // replace with the subreddit you want to display
+        type: 'hot', // you can use 'hot', 'new', 'top', etc.
         apiUrl: 'https://www.reddit.com/r/', // Add this line with the base URL
         postIdList: [], // TODO: Implement this
         displayType: 'headlines', // Options: 'headlines', 'image' (for image, if post is album, only 1st image is shown)
-        count: 3,
-        show: 2,
-        width: 250, // In pixels
+        count: 10, //Number of posts to get from reddit
+        show: 5, //Number of posts to be displayed at a time; If <count value the posts will be rotated with rotateInterval
+        width: 400, // Of module container in pixels
         updateInterval: 15, // In minutes
         rotateInterval: 30, // In seconds
         forceImmediateUpdate: true,
-        characterLimit: null,
-        titleReplacements: [],
+        characterLimit: null, // limit the characters in the title as a numerical value, or set to null for no limit
+        titleReplacements: [
+            /**{
+            toReplace: 'old_text',
+            replacement: 'new_text',
+            caseSensitive: true, // or false
+            },*/
+          // Add more replacements if needed
+        ],
 
         // Toggles
         showHeader: true,
         headerType: 'sentence', // Options: 'sentence', 'chained'
         showAll: false, // Alias for all below 'show' toggles (this excludes the showHeader feature)
-        showRank: true,
-        showScore: true,
-        showNumComments: true,
-        showGilded: true,
-        showAuthor: false,
-        showSubreddit: false, // For combo subreddits
-        colorText: true,
+            showRank: true,
+            showScore: true,
+            showNumComments: true,
+            showGilded: true,
+            showAuthor: false,
+            showSubreddit: false, // For combo subreddits
+            colorText: true,
 
         // Headlines only
         showThumbnail: true, // Irrelevant for image posts
 
         // Image only
-        maxImageHeight: 250, // In pixels
+        maxImageHeight: 500, // In pixels
         imageQuality: 'mid-high', // Options: 'low', 'mid', 'mid-high', 'high'
         showTitle: true, // Non-configurable for text base subs
 
@@ -159,9 +152,9 @@ Module.register('MMM-RedditDisplay', {
      *
      * @return {void}
      */
-    start () {
+    start() {
         Log.info(`Starting module: ${this.name}`);
-        this.log(['Module starting']); // Log statement added
+        this.log(['Module starting']);
 
         this.nodeHelperConfig = {
             subreddit: this.config.subreddit,
@@ -170,7 +163,11 @@ Module.register('MMM-RedditDisplay', {
             count: this.config.count,
             imageQuality: this.config.imageQuality,
             characterLimit: this.config.characterLimit,
-            titleReplacements: this.config.titleReplacements
+            titleReplacements: this.config.titleReplacements,
+            showThumbnail: this.config.displayType === 'headlines', // Automatically show thumbnail for 'headlines' displayType
+            showImage: this.config.displayType === 'image', // Automatically show image for 'image' displayType
+            maxImageHeight: this.config.displayType === 'image' ? this.config.maxImageHeight : undefined, // Set max image height only for 'image' displayType
+            width: this.config.displayType === 'image' ? this.config.width : undefined, // Set width only for 'image' displayType
         };
 
         if (this.config.showAll) {
@@ -215,7 +212,7 @@ Module.register('MMM-RedditDisplay', {
      * @return {void}
      */
     initializeUpdate() {
-        this.log(['Sending REDDIT_CONFIG notification to node helper:', this.nodeHelperConfig]); // Log statement added
+        this.log(['Sending REDDIT_CONFIG notification to node helper:', this.nodeHelperConfig]);
         this.sendSocketNotification('REDDIT_CONFIG', { config: this.nodeHelperConfig });
     },
 
@@ -238,8 +235,8 @@ Module.register('MMM-RedditDisplay', {
             this.handlePostsError(payload);
         }
 
-        this.log(['is rotating', this.rotator !== null]); // Log statement added
-        this.log(['updating immediately', !this.rotator || this.config.forceImmediateUpdate]); // Log statement added
+        this.log(['is rotating', this.rotator !== null]);
+        this.log(['updating immediately', !this.rotator || this.config.forceImmediateUpdate]);
 
         this.initializeRefreshDom(!this.rotator || this.config.forceImmediateUpdate);
     },
@@ -250,25 +247,18 @@ Module.register('MMM-RedditDisplay', {
      * @param  {Object} payload
      * @return {void}
      */
-         handleReturnedPosts(payload) {
+    handleReturnedPosts(payload) {
         const hasValidPosts = payload.posts && payload.posts.length > 0;
 
-        this.log(['Received posts from backend', hasValidPosts]); // Log statement added
+        this.log(['Received posts from backend', hasValidPosts]);
 
         if (hasValidPosts) {
-            this.log(['Payload Posts (before modification)', payload.posts]); // Log statement added
-
             // Update the existing posts instead of clearing them
             this.stagedPosts.push(...payload.posts);
-            this.log(['Staged Posts (after modification)', this.stagedPosts]); // Log statement added
-
             this.stagedPostSets = this.getPostSets(this.stagedPosts, this.config.show);
-            this.log(['Staged Post Sets', this.stagedPostSets]); // Log statement added
         }
-        this.log(['Staged Posts (before sending to frontend)', this.stagedPosts]); // Log statement added
 
-        // Always send the posts to the frontend, whether there are new posts or not
-        this.log(['Sending data to the frontend', { posts: this.stagedPosts }]); // Log statement added
+        this.log(['Sending data to the frontend', { posts: this.stagedPosts }]);
         this.sendSocketNotification('REDDIT_POSTS', { posts: this.stagedPosts });
 
         this.waitingToDeploy = true;
@@ -331,16 +321,17 @@ Module.register('MMM-RedditDisplay', {
      * @return {void}
      */
     initializeRefreshDom (existingCycleIsComplete) {
-        this.log(['initializeRefreshDom called']); // Log statement added
+     this.log(['initializeRefreshDom called']);
         // If nothing exists in the DOM
         if (this.posts.length === 0) {
-            this.log(['posts have no length']); // Log statement added
+            this.log(['posts have no length']);
+            // this.log([this.posts]);
             this.triggerRefresh(false);
         }
         // If this is called from inside the rotator interval or if
         // no rotator interval exists
         else if (existingCycleIsComplete) {
-            this.log(['existing cycle complete']); // Log statement added
+            this.log(['existing cycle complete']);
             this.triggerRefresh(true);
             this.logTimeBetweenReceiveAndRefresh();
         }
@@ -365,8 +356,8 @@ Module.register('MMM-RedditDisplay', {
      */
     triggerRefresh (wrapperExists) {
         this.deployPosts();
-        this.log(['triggerRefresh called']); // Log statement added
-
+        this.log(['triggerRefresh called']);
+        
         this.deleteWrapperElement(wrapperExists);
         this.updateDom();
         this.resetStagedPosts();
@@ -408,27 +399,24 @@ Module.register('MMM-RedditDisplay', {
     getDom() {
         this.log('getting dom');
         let wrapperDiv = document.createElement('div'),
-            postsDiv = document.createElement('div');
-        headerElement = document.createElement('header'),
-        sliderElement = null,
-        postSets = this.postSets;
+            postsDiv = document.createElement('div'),
+            headerElement = document.createElement('header'),
+            sliderElement = null,
+            postSets = this.postSets;
 
         wrapperDiv.id = this.domElements.wrapperId;
         wrapperDiv.style.width = this.config.width + 'px';
 
         if (!this.hasValidPosts) {
             let text = document.createElement('div');
-
             text.innerHTML = 'No valid posts to display<br />Check the console for a full description of error.';
             postsDiv.appendChild(text);
-        } else if (!this.postSets) {
+        } else if (!this.postSets || this.posts.length === 0) {
             let text = document.createElement('div');
-
             text.innerHTML = 'LOADING';
             postsDiv.appendChild(text);
         } else {
             sliderElement = this.getContentSlider(postSets);
-
             postsDiv.appendChild(sliderElement);
         }
 
@@ -518,10 +506,22 @@ Module.register('MMM-RedditDisplay', {
      * Get div containing all post data
      * TODO: Refactor this - ideally implement some sort of templatization
      *
-     * @param  {Arrray} postSets
+     * @param  {Array} postSets
      * @return {Element}
      */
     getContentSlider(postSets) {
+        // Add a check for the existence of the posts array
+        if (!this.posts) {
+            console.error("Invalid posts array", this.posts);
+            return document.createElement('div'); // Return an empty div or handle accordingly
+        }
+
+        // Add a check for the existence of posts in the array
+        if (this.posts.length === 0) {
+            console.error("No posts available");
+            return document.createElement('div'); // Return an empty div or handle accordingly
+        }
+
         let slider = document.createElement('div'),
             idxCounter = 0;
 
@@ -540,11 +540,14 @@ Module.register('MMM-RedditDisplay', {
             postSet.forEach((post, idx) => {
                 let postIndex = idx + idxCounter + 1;
 
+                let postRow;
                 if (this.config.displayType === 'image') {
-                    table.appendChild(this.createImageRow(post, postIndex));
+                    postRow = this.createImageRow(post, postIndex);
                 } else {
-                    table.appendChild(this.createHeadlineRow(post, postIndex));
+                    postRow = this.createHeadlineRow(post, postIndex);
                 }
+
+                table.appendChild(postRow);
             });
 
             idxCounter += postSet.length;
@@ -563,69 +566,102 @@ Module.register('MMM-RedditDisplay', {
      * @param  {Number} postIndex
      * @return {Element}
      */
-    createPostRow (post, postIndex) {
-        let wrapper = document.createElement('div'),
-        imageRow = document.createElement('tr'),
-        image = this.getImage(post.src, null, this.config.maxImageHeight),
-        imageContainer = document.createElement('div'),
-        imageTd = this.getTd(totalColumns, 'col'),
-        colored = this.config.colorText ? 'colored' : '',
-        row2, row3, showGilded, gildedText;
-        
-        if (this.config.displayType === 'image') {
-            return this.createImageRow(post, postIndex);
-        } else {
-            return this.createHeadlineRow(post, postIndex);
+    createPostRow(post, postIndex) {
+        // Add a check for the existence of the post object
+        if (!post) {
+            console.error("Invalid post object", post);
+            return document.createElement('div'); // Return an empty div or handle accordingly
         }
-        return wrapper;
+
+        // Add a check for the existence of the title property
+        if (!post.title) {
+            console.error("Missing title in post object", post);
+            return document.createElement('div'); // Return an empty div or handle accordingly
+        }
+
+        try {
+            console.log("Post object:", post); // Log the post object
+
+            if (this.config.displayType === 'image') {
+                return this.createImageRow(post, postIndex);
+            } else {
+                return this.createHeadlineRow(post, postIndex);
+            }
+        } catch (error) {
+            console.error("Error in createPostRow", error, post);
+            return document.createElement('div'); // Return an empty div or handle accordingly
+        }
     },
 
     /**
-     * Create DOM element for the given post based on 'headlines' display type
+     * Create DOM element for headline based user config
+     * TODO: Refactor this - ideally implement some sort of templatization
      *
      * @param  {Object} post
      * @param  {Number} postIndex
      * @return {Element}
      */
     createHeadlineRow(post, postIndex) {
-        let wrapper = document.createElement('div'),
+        // Add a check for the existence of the post object
+        if (!post) {
+            console.error("Invalid post object", post);
+            return document.createElement('div'); // Return an empty div or handle accordingly
+        }
+
+        // Add a check for the existence of the title property
+        if (!post.title) {
+            console.error("Missing title in post object", post);
+            return document.createElement('div'); // Return an empty div or handle accordingly
+        }
+
+        let hasTwoRows = this.isMultiTextRow(),
+            wrapper = document.createElement('div'),
+            rowSpan = hasTwoRows ? '2' : '1',
             row1 = document.createElement('tr'),
             row2 = document.createElement('tr'),
-            rowSpan = 2,
-            hasTwoRows = true,  // Always have two rows
             rank = this.getTd(rowSpan, 'row'),
             score = this.getTd(rowSpan, 'row'),
             thumbnail = this.getTd(rowSpan, 'row'),
-            image = this.getImage(post.thumbnail, 70),
+            image = this.getImage(post.src, 70), // Use post.src instead of post.thumbnail because thumbnail always return null
             details = this.getTd(),
             showGilded = this.config.showGilded && post.gilded,
             gildedText = post.gilded > 1 ? 'x' + post.gilded : '',
             colored = this.config.colorText ? 'colored' : '';
 
-        // Always append image to thumbnail td, conditionally append td
-        this.appendIfShown(true, thumbnail, image);
-        this.appendIfShown(this.config.showThumbnail, row1, thumbnail, 'thumbnail');
-
-        // Append rank and score elements to row1
         this.appendIfShown(this.config.showRank, row1, this.getFixedColumn(rank, ['rank', colored], '#' + postIndex));
         this.appendIfShown(this.config.showScore, row1, this.getFixedColumn(score, ['score', colored], this.formatScore(post.score)));
+
+        if (post.thumbnail !== undefined && post.thumbnail !== null && post.thumbnail !== "") {
+            this.appendIfShown(true, thumbnail, image);
+            this.appendIfShown(this.config.showThumbnail, row1, thumbnail, 'thumbnail');
+        } else {
+            // Display the image URL directly with max-width set to the configured size
+            thumbnail.innerHTML = `<img src="${post.src}" alt="Image" style="max-width: ${this.config.thumbnailSize}px;">`;
+            this.appendIfShown(this.config.showThumbnail, row1, thumbnail, 'thumbnail');
+        }
 
         // Always show post title for text-based post rows
         this.appendIfShown(true, row1, 'td', 'title', post.title);
 
-        this.appendIfShown(this.config.showNumComments, details, 'span', 'comments', post.num_comments + ' comments');
-        this.appendIfShown(showGilded, details, 'span', 'gilded', gildedText);
-        this.appendIfShown(this.config.showSubreddit, details, 'span', 'subreddit', 'r/' + post.subreddit);
-        this.appendIfShown(this.config.showAuthor, details, 'span', 'author', 'by ' + post.author);
+        if (hasTwoRows) {
+            this.appendIfShown(this.config.showNumComments, details, 'span', 'comments', post.num_comments + ' comments');
+            this.appendIfShown(showGilded, details, 'span', 'gilded', gildedText);
+            this.appendIfShown(this.config.showSubreddit, details, 'span', 'subreddit', 'r/' + post.subreddit);
+            this.appendIfShown(this.config.showAuthor, details, 'span', 'author', 'by ' + post.author);
 
-        this.appendIfShown(true, row2, details, 'details');
+            this.appendIfShown(true, row2, details, 'details');
 
-        wrapper.appendChild(row1);
-        wrapper.appendChild(row2);
+            wrapper.appendChild(row1);
+            wrapper.appendChild(row2);
 
-        wrapper.classList.add('post-row', 'text-row');
+            wrapper.classList.add('post-row', 'text-row');
 
-        return wrapper;
+            return wrapper;
+        } else {
+            row1.classList.add('post-row', 'text-row');
+
+            return row1;
+        }
     },
 
     /**
@@ -636,62 +672,63 @@ Module.register('MMM-RedditDisplay', {
      * @param  {Number} postIndex
      * @return {Element}
      */
-createImageRow(post, postIndex) {
-    let hasDetailRow = this.isMultiTextRow(),
-        hasTitleRow = this.config.showTitle,
-        totalRows = this.getImageRowCount(hasTitleRow, hasDetailRow),
-        imageRowOnly = totalRows === 1,
-        totalColumns = this.getImageColCount(imageRowOnly),
-        wrapper = document.createElement('div'),
-        imageRow = document.createElement('tr'),
-        imageContainer = document.createElement('div'),
-        imageTd = this.getTd(totalColumns, 'col'),
-        colored = this.config.colorText ? 'colored' : '',
-        row2, row3, showGilded, gildedText;
+    createImageRow(post, postIndex) {
+        if (!post || !post.src) {
+            console.error("Invalid post object or missing source", post);
+            return document.createElement('div'); // Handle accordingly
+        }
 
-    // Log thumbnail value
-    console.log('Thumbnail:', post.thumbnail);
+        let hasDetailRow = this.isMultiTextRow(),
+            hasTitleRow = this.config.showTitle,
+            totalRows = this.getImageRowCount(hasTitleRow, hasDetailRow),
+            wrapper = document.createElement('div'),
+            rowSpan = hasTitleRow ? '2' : '1',
+            row1 = document.createElement('tr'),
+            row2 = hasTitleRow ? document.createElement('tr') : null,
+            rank = this.getTd(rowSpan, 'row'),
+            score = this.getTd(rowSpan, 'row'),
+            image = this.getImage(post.src, null, this.config.maxImageHeight),
+            details = this.getTd(),
+            showGilded = this.config.showGilded && post.gilded,
+            gildedText = post.gilded > 1 ? 'x' + post.gilded : '',
+            colored = this.config.colorText ? 'colored' : '';
 
-    // If rank is shown, force onto the 1st row
-    this.appendIfShown(imageRowOnly && this.config.showRank, imageRow, this.getFixedColumn(null, ['rank', colored], '#' + postIndex));
+        // If rank is shown, force onto the 1st row
+        this.appendIfShown(this.config.showRank, row1, this.getFixedColumn(rank, ['rank', colored], '#' + postIndex));
 
-    imageContainer.appendChild(this.getImage(post.thumbnail, null, this.config.maxImageHeight));
-    imageContainer.classList.add('image-container');
+        // Add other details as needed (score, title, etc.)
+        this.appendIfShown(this.config.showScore, row1, this.getFixedColumn(score, ['score', colored], this.formatScore(post.score)));
 
-    imageTd.appendChild(imageContainer);
-    this.appendIfShown(true, imageRow, imageTd, 'feature-image');
+        // Display the image URL directly with max-width set to the configured size
+        this.appendIfShown(true, row1, this.getTd(rowSpan, 'row', 'feature-image'), 'feature-image', image);
 
-    wrapper.appendChild(imageRow);
+        // Append the image and details to the row
+        if (hasTitleRow) {
+            this.appendIfShown(this.config.showTitle, row1, 'td', 'title', post.title);
+        }
 
-    if (hasTitleRow) {
-        row2 = document.createElement('tr');
+        if (hasDetailRow) {
+            // Move the comments to a separate row if there's no title row
+            if (!hasTitleRow) {
+                row2 = document.createElement('tr');
+            }
 
-        this.appendIfShown(this.config.showRank, row2, this.getFixedColumn(this.getTd(totalRows - 1, 'row'), ['rank', colored], '#' + postIndex));
-        this.appendIfShown(this.config.showScore, row2, this.getFixedColumn(this.getTd(totalRows - 1, 'row'), ['score', colored], this.formatScore(post.score)));
-        this.appendIfShown(this.config.showTitle, row2, 'td', 'title', post.title);
+            this.appendIfShown(this.config.showNumComments, row2 || details, 'span', 'comments', post.num_comments + ' comments');
+            this.appendIfShown(showGilded, row2 || details, 'span', 'gilded', gildedText);
+            this.appendIfShown(this.config.showSubreddit, row2 || details, 'span', 'subreddit', 'r/' + post.subreddit);
+            this.appendIfShown(this.config.showAuthor, row2 || details, 'span', 'author', 'by ' + post.author);
+        }
 
-        wrapper.appendChild(row2);
-    }
+        // Append rows to the wrapper
+        wrapper.appendChild(row1);
+        if (row2) {
+            wrapper.appendChild(row2);
+        }
 
-    if (hasDetailRow) {
-        row3 = document.createElement('tr');
-        showGilded = this.config.showGilded && post.gilded;
-        gildedText = post.gilded > 1 ? 'x' + post.gilded : '';
-        let details = this.getTd();
+        wrapper.classList.add('post-row', 'image-row');
 
-        this.appendIfShown(this.config.showNumComments, details, 'span', 'comments', post.num_comments + ' comments');
-        this.appendIfShown(showGilded, details, 'span', 'gilded', gildedText);
-        this.appendIfShown(this.config.showSubreddit, details, 'span', 'subreddit', 'r/' + post.subreddit);
-        this.appendIfShown(this.config.showAuthor, details, 'span', 'author', 'by ' + post.author);
-
-        this.appendIfShown(true, row3, details, 'details');
-        wrapper.appendChild(row3);
-    }
-
-    wrapper.classList.add('post-row', 'image-row');
-
-    return wrapper;
-},
+        return wrapper;
+    },
 
     /**
      * Determine if the user configuration require multiple table rows
@@ -848,40 +885,32 @@ getFixedColumn(td, className, html) {
      * @param  {Number} maxHeight
      * @return {Element}
      */
-    getImage(source, width, maxHeight, displayType) {
-        let image;
+getImage(source, width, maxHeight) {
+    let image;
 
-        if (displayType === 'headlines' && source && source.trim() !== '') {
-            // For headlines displayType with base64-encoded thumbnail
-            const base64Data = source.replace(/^data:image\/\w+;base64,/, '');
-            console.log('Base64 Data:', base64Data);
-            
-            const blob = new Blob([new Uint8Array(atob(base64Data).split('').map(char => char.charCodeAt(0)))], { type: 'image/jpeg' });
-            const blobUrl = URL.createObjectURL(blob);
+    if (source.indexOf('http') > -1) {
+        image = document.createElement('img');
+        image.src = source;
+} else {
+    image = document.createElement('div');
+    if (typeof source === 'string' && source.trim() !== '') {
+        // Add the class only if source is a non-empty string
+        image.classList.add(source);
+    }
+}
 
-            image = document.createElement('img');
-            image.src = blobUrl;
-        } else {
-            // For regular images or empty sources
-            if (source && source.trim() !== '' && source.indexOf('http') > -1) {
-                image = document.createElement('img');
-                image.src = source;
-            } else {
-                image = document.createElement('div');
-                image.classList.add(source);
-            }
-        }
 
-        if (this.helper.argumentExists(width)) {
-            image.width = width;
-        }
+    if (this.helper.argumentExists(width)) {
+        image.width = width;
+    }
 
-        if (this.helper.argumentExists(maxHeight)) {
-            image.style.maxHeight = maxHeight + 'px';
-        }
+    if (this.helper.argumentExists(maxHeight)) {
+        image.style.maxHeight = maxHeight + 'px';
+    }
 
-        return image;
-    },
+    return image;
+},
+
     /**
      * Format numbers over 10,000
      *
@@ -902,10 +931,10 @@ getFixedColumn(td, className, html) {
      * @return {void}
      */
     setRotateInterval () {
-        this.log(['setting rotator']); // Log statement added
-        this.log(['rotator', this.rotator]); // Log statement added
+        this.log(['setting rotator']);
+        this.log(['rotator', this.rotator]);
         if (this.rotator !== null) {
-            this.log(['unset top']); // Log statement added
+            this.log(['unset top']);
             this.unsetRotateInterval();
         }
 
@@ -914,31 +943,23 @@ getFixedColumn(td, className, html) {
         this.rotator = setInterval(() => {
             let slider = document.getElementById(this.domElements.sliderId),
                 postSets = slider.children,
-                nextIndex = this.currentPostSetIndex + 1,
-                isLastIndex = nextIndex === postSets.length,
-                hasMultipleSets = postSets.length > 1;
+                nextIndex = this.getNextPostSetIndex();
 
-            this.log(['rotating', isLastIndex && hasMultipleSets]); // Log statement added
-            this.log(['current post set index', this.currentPostSetIndex]); // Log statement added
-            this.log(['next index', nextIndex]); // Log statement added
+            // this.log(['index set', nextIndex]);
+            this.log(['index set', nextIndex]);
 
-            if (isLastIndex && hasMultipleSets) {
-                this.resetCurrentPostSetIndex();
-                this.deployPosts();
-                this.updateDom();
-
-                // Only unset the interval if it has been more than 2 rotations
-                if (this.rotationCount > 1) {
-                    this.unsetRotateInterval();
-                    this.rotationCount = 0;
-                } else {
-                    this.rotationCount++;
-                }
+            if (nextIndex === 0 && this.waitingToDeploy && !this.config.forceImmediateUpdate) {
+                this.log(['waiting to deploy', this.waitingToDeploy]);
+                this.initializeRefreshDom(true);
             } else {
-                this.currentPostSetIndex++;
-                this.rotatorCycle();
+                postSets[this.currentPostSetIndex].style.display = "none";
+                postSets[nextIndex].style.display = "initial";
+
+                this.currentPostSetIndex = nextIndex;
             }
-        }, this.config.displayTime * 1000);
+        }, this.config.rotateInterval * 1000);
+
+        this.log(['rotator', this.rotator]);
     },
 
     /**
@@ -953,10 +974,7 @@ getFixedColumn(td, className, html) {
     },
 
     /**
-     * Set the currentPostSetIndex back to 0
-     * Should only be relevant in scenarios where we force an immediate update,
-     * but is good for posterity's sake even if an update isn't force on
-     * receiving new posts
+     * Set the currentPostSetIndex back to 0 Should only be relevant in scenarios where we force an immediate update, but is good for posterity's sake even if an update isn't force on receiving new posts
      *
      * @return {void}
      */
@@ -966,8 +984,7 @@ getFixedColumn(td, className, html) {
     },
 
     /**
-     * Increment the post set index, cylcing back to 0 when the last post set
-     * is the current set
+     * Increment the post set index, cylcing back to 0 when the last post set is the current set
      *
      * @return {Number}
      */
@@ -982,8 +999,7 @@ getFixedColumn(td, className, html) {
     },
 
     /**
-     * Wrapper for console log in order to keep debugging code
-     * for reuse, but have disabled unless explicitly set
+     * Wrapper for console log in order to keep debugging code for reuse, but have disabled unless explicitly set
      *
      * @param  {Array} toLog
      * @return {void}
