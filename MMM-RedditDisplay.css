@@ -1,3 +1,15 @@
+/* Add centering styles for text rows */
+.MMM-RedditDisplay-slider .table .text-row {
+  display: flex;
+  align-items: center;
+}
+
+/* Add spacing between thumbnail and text in text rows */
+.MMM-RedditDisplay-slider .table .text-row .thumbnail,
+.MMM-RedditDisplay-slider .table .text-row .thumbnail div {
+  margin-right: 10px;
+}
+
 .MMM-RedditDisplay-slider .table td {
   font-size: 20px;
   vertical-align: middle;
