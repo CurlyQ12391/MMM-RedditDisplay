@@ -6,8 +6,7 @@
   "author": "CurlyQ12391",
   "license": "MIT",
   "dependencies": {
-    "node-fetch": "^2.6.1",
-    "sharp": "^0.33.0"
+    "node-fetch": "^2.6.1"
   },
   "keywords": [
     "MM",
