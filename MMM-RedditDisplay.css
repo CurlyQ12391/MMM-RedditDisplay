@@ -1,84 +1,71 @@
 .MMM-RedditDisplay { /* MMM-RedditDisplay module wrapper */
   position: fixed;
-  background-color: green;
   vertical-align: middle;
   width: 100%;
-  margin-right: ;
-  margin-top: 200px;
-  margin-left: ;
-  margin-right: ;
+  /* Margins are helpful if the module is sharing the same position as another module*/
+  margin-top: 0px; 
+  margin-bottom: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
 }
 .MMM-RedditDisplay .module-header{ /* Module header (e.g., New Posts From R/...) */
-  background-color: blue;
   vertical-align: middle;
-  margin-right: ;
-  margin-top: ;
-  margin-left: ;
-  margin-right: ;
-  font-size: 25px;
+  margin-bottom: 10px; /* Spacing from header line to first post */
+  font-size: 30px;
   color: #fff;
   font-style: bold;
 }
 .MMM-RedditDisplay .post-row{ /* MMM-RedditDisplay module content area */
-  background-color: purple;
   vertical-align: middle; /* Aligns the post text with the image */
-  margin-right: ;
-  margin-top: ;
-  margin-left: ;
-  margin-right: ;
+  margin-top: 3px; /* Spacing around each post */
  }
 .MMM-RedditDisplay .rank{ /* post's # rank field */
-  background-color: black;
   /* margin's control spacing between each post data */
+  margin-top: 0px; 
+  margin-bottom: 0px;
+  margin-left: 0px;
   margin-right: 5px;
-  margin-top: ;
-  margin-left: ;
-  margin-right: ;
-  font-size: 20px;
+  font-size: 25px;
   color: #fff;
   font-style: italic;
 }
 .MMM-RedditDisplay .score{ /* post's score field */
-  background-color: yellow;
   /* margin's control spacing between each post data */
-  margin-right: 5px;
-  margin-top: ;
-  margin-left: ;
-  margin-right: ;
-  font-size: 20px;
+  margin-top: 0px; 
+  margin-bottom: 0px;
+  margin-left: 5px;
+  margin-right: 15px;
+  font-size: 25px;
   color: #fff;
   font-style: italic;
 }
 .MMM-RedditDisplay .feature-image{ /* post's image/thumbnail field */
-  background-color: yellow;
-  /* margin's control spacing between each post data */
+  /* images doesn't like margins, use padding instead */
   max-height: var(--max-image-height, 200px); /* If size is not set in main config CSS will default to 200px */
   width: auto;
-  margin-right: 5px;
-  margin-top: ;
-  margin-left: ;
-  margin-right: ;
+  padding-top: 0px; 
+  padding-bottom: 0px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 .MMM-RedditDisplay .title{ /* post title field */
-  background-color: orange;
-  /* margin's control spacing between each post data */
-  margin-right: 5px;
-  margin-top: ;
-  margin-left: ;
-  margin-right: ;
-  font-size: 20px;
+  /* titles don't like margins, use padding instead */
+  padding-top: 0px; 
+  padding-bottom: 0px;
+  padding-left: 5px;
+  padding-right: 0px;
+  font-size: 25px;
   color: #fff;
-  font-style: italic;
+  font-style: bold;
   word-wrap: break-word; /* Allow long titles to wrap */
 }
 .MMM-RedditDisplay .comments{ /* post's number of comments field */
-  background-color: grey;
   /* margin's control spacing between each post data */
-  margin-right: 5px;
-  margin-top: ;
-  margin-left: ;
-  margin-right: ;
-  font-size: 20px;
+  margin-top: 0px; 
+  margin-bottom: 0px;
+  margin-left: 5px;
+  margin-right: 0px;
+  font-size: 25px;
   color: #fff;
   font-style: italic;
 }
