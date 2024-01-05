@@ -1,120 +1,84 @@
-/* Add centering styles for text rows */
-.MMM-RedditDisplay-slider .table .text-row {
-  display: flex;
-  align-items: center;
-}
-
-/* Add spacing between thumbnail and text in text rows */
-.MMM-RedditDisplay-slider .table .text-row .thumbnail,
-.MMM-RedditDisplay-slider .table .text-row .thumbnail div {
-  margin-right: 10px;
-}
-
-.MMM-RedditDisplay-slider .table td {
-  font-size: 20px;
+.MMM-RedditDisplay { /* MMM-RedditDisplay module wrapper */
+  position: fixed;
+  background-color: green;
   vertical-align: middle;
-}
-
-.MMM-RedditDisplay-slider .table td:not(:last-child) {
-  padding-right: 10px;
-}
-
-.MMM-RedditDisplay-slider .table td .rank {
-  width: 35px;
-  text-align: center;
-}
-
-.MMM-RedditDisplay-slider .table td .rank.colored {
-  color: rgba(198, 198, 198, 0.5);
-}
-
-.MMM-RedditDisplay-slider .table td .score {
-  width: 50px;
-  text-align: center;
-}
-
-.MMM-RedditDisplay-slider .table td .score.colored {
-  color: #FF8B60;
-}
-
-.MMM-RedditDisplay-slider .table td.title {
   width: 100%;
-  line-height: 1.5;
+  margin-right: ;
+  margin-top: 200px;
+  margin-left: ;
+  margin-right: ;
 }
-
-.MMM-RedditDisplay-slider .table td.details {
-  font-size: 14px;
-  line-height: 1.5;
+.MMM-RedditDisplay .module-header{ /* Module header (e.g., New Posts From R/...) */
+  background-color: blue;
+  vertical-align: middle;
+  margin-right: ;
+  margin-top: ;
+  margin-left: ;
+  margin-right: ;
+  font-size: 25px;
+  color: #fff;
+  font-style: bold;
 }
-
-.MMM-RedditDisplay-slider .table td.details .author {
-  float: right;
+.MMM-RedditDisplay .post-row{ /* MMM-RedditDisplay module content area */
+  background-color: purple;
+  vertical-align: middle; /* Aligns the post text with the image */
+  margin-right: ;
+  margin-top: ;
+  margin-left: ;
+  margin-right: ;
+ }
+.MMM-RedditDisplay .rank{ /* post's # rank field */
+  background-color: black;
+  /* margin's control spacing between each post data */
+  margin-right: 5px;
+  margin-top: ;
+  margin-left: ;
+  margin-right: ;
+  font-size: 20px;
+  color: #fff;
+  font-style: italic;
 }
-
-.MMM-RedditDisplay-slider .table td.details .subreddit {
-  float: right;
-  margin-left: 10px;
+.MMM-RedditDisplay .score{ /* post's score field */
+  background-color: yellow;
+  /* margin's control spacing between each post data */
+  margin-right: 5px;
+  margin-top: ;
+  margin-left: ;
+  margin-right: ;
+  font-size: 20px;
+  color: #fff;
+  font-style: italic;
 }
-
-.MMM-RedditDisplay-slider .table td.details .gilded {
-  margin-left: 10px;
+.MMM-RedditDisplay .feature-image{ /* post's image/thumbnail field */
+  background-color: yellow;
+  /* margin's control spacing between each post data */
+  max-height: var(--max-image-height, 200px); /* If size is not set in main config CSS will default to 200px */
+  width: auto;
+  margin-right: 5px;
+  margin-top: ;
+  margin-left: ;
+  margin-right: ;
 }
-
-.MMM-RedditDisplay-slider .table td.details .gilded:before {
-  display: inline-block;
-  content: '';
-  background-image: url("https://www.redditstatic.com/sprite-reddit.bTLvdEETokI.png");
-  background-position: -84px -1647px;
-  background-repeat: no-repeat;
-  height: 14px;
-  width: 13px;
-  margin-right: 2px;
-  vertical-align: -3px;
+.MMM-RedditDisplay .title{ /* post title field */
+  background-color: orange;
+  /* margin's control spacing between each post data */
+  margin-right: 5px;
+  margin-top: ;
+  margin-left: ;
+  margin-right: ;
+  font-size: 20px;
+  color: #fff;
+  font-style: italic;
+  word-wrap: break-word; /* Allow long titles to wrap */
 }
-
-.MMM-RedditDisplay-slider .table .image-row:not(:last-child) {
-  margin-bottom: 10px;
-}
-
-.MMM-RedditDisplay-slider .table .image-row .feature-image {
-  width: 100%;
-}
-
-.MMM-RedditDisplay-slider .table .image-row .feature-image .image-container {
-  width: 100%;
-  overflow-y: hidden;
-}
-
-.MMM-RedditDisplay-slider .table .image-row .feature-image .image-container img {
-  max-width: 100%;
-  display: block;
-  margin: 0 auto;
-}
-
-.MMM-RedditDisplay-slider .table .text-row:not(:last-child) {
-  border-bottom: 1px solid rgba(211, 211, 211, 0.5);
-  margin-bottom: 5px;
-}
-
-.MMM-RedditDisplay-slider .table .text-row .thumbnail div {
-  background-image: url("https://www.redditstatic.com/sprite-reddit.bTLvdEETokI.png");
-  background-repeat: no-repeat;
-  height: 50px;
-  width: 70px;
-}
-
-.MMM-RedditDisplay-slider .table .text-row .thumbnail .default {
-  background-position: 0px -1099px;
-}
-
-.MMM-RedditDisplay-slider .table .text-row .thumbnail .image {
-  background-position: 0px -1043px;
-}
-
-.MMM-RedditDisplay-slider .table .text-row .thumbnail .self {
-  background-position: 0px -1267px;
-}
-
-.MMM-RedditDisplay-slider .table .text-row .thumbnail .nsfw {
-  background-position: 0px -1155px;
+.MMM-RedditDisplay .comments{ /* post's number of comments field */
+  background-color: grey;
+  /* margin's control spacing between each post data */
+  margin-right: 5px;
+  margin-top: ;
+  margin-left: ;
+  margin-right: ;
+  font-size: 20px;
+  color: #fff;
+  font-style: italic;
 }
