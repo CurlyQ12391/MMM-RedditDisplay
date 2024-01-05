@@ -397,32 +397,27 @@ Module.register('MMM-RedditDisplay', {
      * @return {Element}
      */
     getDom() {
-        this.log('getting dom');
-        let wrapperDiv = document.createElement('div'),
-            postsDiv = document.createElement('div'),
-            headerElement = document.createElement('header'),
-            sliderElement = null,
-            postSets = this.postSets;
+      if (!this.hasValidPosts) {
+        let text = document.createElement('div');
+        text.innerHTML = 'No valid posts to display<br />Check the console for a full description of the error.';
+        return text;
+      } else if (!this.postSets || this.posts.length === 0) {
+        let text = document.createElement('div');
+        text.innerHTML = 'LOADING';
+        return text;
+      }
 
-        wrapperDiv.id = this.domElements.wrapperId;
-        wrapperDiv.style.width = this.config.width + 'px';
+      let wrapperDiv = document.createElement('div');
+      wrapperDiv.id = this.domElements.wrapperId;
+      wrapperDiv.style.width = this.config.width + 'px';
 
-        if (!this.hasValidPosts) {
-            let text = document.createElement('div');
-            text.innerHTML = 'No valid posts to display<br />Check the console for a full description of error.';
-            postsDiv.appendChild(text);
-        } else if (!this.postSets || this.posts.length === 0) {
-            let text = document.createElement('div');
-            text.innerHTML = 'LOADING';
-            postsDiv.appendChild(text);
-        } else {
-            sliderElement = this.getContentSlider(postSets);
-            postsDiv.appendChild(sliderElement);
-        }
+      let postsDiv = document.createElement('div');
+      let sliderElement = this.getContentSlider(this.postSets);
+      postsDiv.appendChild(sliderElement);
 
-        wrapperDiv.appendChild(postsDiv);
+      wrapperDiv.appendChild(postsDiv);
 
-        return wrapperDiv;
+      return wrapperDiv;
     },
 
     /**
