@@ -1,14 +1,9 @@
 # MMM-RedditDisplay #
 
-This module is used to show top level reddit info for Magic Mirror<sup>2</sup>.
+This Magic Mirror Module is forked from kjb085/MMM-Reddit, with additional edits to ensure functionality.
 
 It is highly configurable and primarily allows users to choose between two display types, the number of posts pull from reddit, how many of those posts to display, how often to cycle through the set of posts, and how frequently to refresh posts from reddit.
-
-## NOTE ## 
-
-Currently working on a large refactor that will allow multiple instances of the module to run simultaneously. Please submit feature requests as issues tagged as an enchancement and please list the title as "v2: [your suggestion]".
-
-Project ETA completion: holiday 2020
+NOTE: "Thumbnails" are only resized original post images as the thumbnail functionality was not rendering from Reddit.
 
 ## End User Dependencies ##
 
@@ -31,6 +26,13 @@ Just an installation of [Magic Mirror<sup>2</sup>](https://github.com/MichMich/M
     	...
 	}
 },
+```
+## Update ##
+
+```
+cd ~/MagicMirror/modules/MMM-RedditDisplay
+git pull
+npm update
 ```
 
 ## Examples ##
